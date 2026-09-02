@@ -52,19 +52,23 @@ function signOut() {
   <div class="bg-background min-h-screen">
     <!-- Sidebar -->
     <aside
-      class="bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r transition-transform duration-200"
+      class="bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r transition-[width,transform] duration-200 lg:translate-x-0"
       :class="[
         mobileOpen ? 'translate-x-0' : '-translate-x-full',
-        collapsed ? 'lg:-translate-x-full' : 'lg:translate-x-0',
+        collapsed ? 'lg:w-16' : 'lg:w-64',
       ]"
     >
-      <div class="flex h-16 items-center gap-2.5 px-4">
-        <LogoMark />
-        <div class="min-w-0">
+      <div
+        class="flex h-16 items-center gap-2.5 px-4"
+        :class="collapsed && 'lg:justify-center lg:px-0'"
+      >
+        <LogoMark :class="collapsed && 'lg:hidden'" />
+        <div class="min-w-0" :class="collapsed && 'lg:hidden'">
           <p class="truncate text-sm font-semibold">Lesson Plan AI</p>
           <p class="text-muted-foreground truncate text-xs">{{ props.workspace }}</p>
         </div>
-        <!-- Close: the drawer on small screens, the docked sidebar on large ones. -->
+
+        <!-- Mobile: the drawer covers the header, so it closes itself. -->
         <Button
           variant="ghost"
           size="icon-sm"
@@ -74,45 +78,58 @@ function signOut() {
           <X />
           <span class="sr-only">Close menu</span>
         </Button>
+
+        <!-- Desktop: collapses the sidebar to an icon-only rail, and back. -->
         <Button
           variant="ghost"
           size="icon-sm"
-          class="ml-auto hidden lg:inline-flex"
-          title="Hide sidebar"
-          @click="collapsed = true"
+          class="hidden lg:inline-flex"
+          :class="!collapsed && 'lg:ml-auto'"
+          :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+          @click="collapsed = !collapsed"
         >
-          <PanelLeftClose />
-          <span class="sr-only">Hide sidebar</span>
+          <PanelLeftOpen v-if="collapsed" />
+          <PanelLeftClose v-else />
+          <span class="sr-only">{{ collapsed ? 'Expand sidebar' : 'Collapse sidebar' }}</span>
         </Button>
       </div>
 
       <Separator />
 
-      <nav class="flex-1 space-y-1 overflow-y-auto p-3">
+      <nav class="flex-1 space-y-1 overflow-y-auto p-3" :class="collapsed && 'lg:px-2'">
         <RouterLink
           v-for="item in props.nav"
           :key="item.to"
           :to="item.to"
-          class="group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
-          :class="
+          :title="collapsed ? item.label : undefined"
+          class="group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+          :class="[
             isActive(item)
               ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-xs'
-              : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-          "
+              : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+            collapsed && 'lg:justify-center lg:px-0',
+          ]"
         >
           <component :is="item.icon" class="size-4 shrink-0" />
-          <span class="truncate">{{ item.label }}</span>
+          <span class="truncate" :class="collapsed && 'lg:hidden'">{{ item.label }}</span>
+
           <Badge
             v-if="item.badge"
             :variant="isActive(item) ? 'secondary' : 'warning'"
             class="ml-auto tabular-nums"
+            :class="collapsed && 'lg:hidden'"
           >
             {{ item.badge }}
           </Badge>
+          <!-- The count has no room on the rail, so it becomes a dot. -->
+          <span
+            v-if="item.badge && collapsed"
+            class="bg-primary absolute top-1 right-1 hidden size-1.5 rounded-full lg:block"
+          />
         </RouterLink>
       </nav>
 
-      <div class="p-3">
+      <div class="p-3" :class="collapsed && 'lg:hidden'">
         <div class="bg-muted/60 rounded-lg p-3">
           <p class="text-xs font-medium">Prototype data</p>
           <p class="text-muted-foreground mt-1 text-xs leading-relaxed">
@@ -130,25 +147,13 @@ function signOut() {
     />
 
     <!-- Main -->
-    <div class="transition-[padding] duration-200" :class="collapsed ? 'lg:pl-0' : 'lg:pl-64'">
+    <div class="transition-[padding] duration-200" :class="collapsed ? 'lg:pl-16' : 'lg:pl-64'">
       <header
         class="bg-background/85 sticky top-0 z-30 flex h-16 items-center gap-3 border-b px-4 backdrop-blur sm:px-6 no-print"
       >
         <Button variant="ghost" size="icon-sm" class="lg:hidden" @click="mobileOpen = true">
           <Menu />
           <span class="sr-only">Open menu</span>
-        </Button>
-
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          class="hidden lg:inline-flex"
-          :title="collapsed ? 'Show sidebar' : 'Hide sidebar'"
-          @click="collapsed = !collapsed"
-        >
-          <PanelLeftOpen v-if="collapsed" />
-          <PanelLeftClose v-else />
-          <span class="sr-only">{{ collapsed ? 'Show sidebar' : 'Hide sidebar' }}</span>
         </Button>
 
         <p class="truncate text-sm font-medium">{{ route.meta.title ?? props.workspace }}</p>
