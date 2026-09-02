@@ -75,26 +75,26 @@ on conflict (name) do update
 -- Most Essential Learning Competencies (Mathematics).
 select public.import_competencies($json$
 [
-  {"code":"M1NS-Ia-1","grade":"Grade 1","quarter":1,"domain":"Numbers and Number Sense","description":"Recites numbers from 0 to 100 forward and backward.","active":true},
-  {"code":"M2NS-Ib-2","grade":"Grade 2","quarter":1,"domain":"Numbers and Number Sense","description":"Groups objects into tens, hundreds and thousands.","active":true},
+  {"code":"M1NS-Ia-1","grade":"Grade 3","quarter":1,"domain":"Numbers and Number Sense","description":"Recites numbers from 0 to 100 forward and backward.","active":true},
+  {"code":"M2NS-Ib-2","grade":"Grade 3","quarter":1,"domain":"Numbers and Number Sense","description":"Groups objects into tens, hundreds and thousands.","active":true},
   {"code":"M3NS-Ia-1","grade":"Grade 3","quarter":1,"domain":"Numbers and Number Sense","description":"Visualizes and represents numbers from 1001 to 10 000 using a variety of materials.","active":true},
-  {"code":"M4NS-Ia-1","grade":"Grade 4","quarter":1,"domain":"Numbers and Number Sense","description":"Visualizes numbers up to 100 000 with emphasis on numbers 10 001 to 100 000.","active":true},
-  {"code":"M4NS-IIc-4","grade":"Grade 4","quarter":2,"domain":"Numbers and Number Sense","description":"Identifies proper, improper and mixed fractions using models and number lines.","active":true},
-  {"code":"M5NS-Ia-1","grade":"Grade 5","quarter":1,"domain":"Numbers and Number Sense","description":"Visualizes numbers up to 10 000 000 with emphasis on numbers 100 001 to 10 000 000.","active":true},
-  {"code":"M5NS-Ib-2","grade":"Grade 5","quarter":1,"domain":"Numbers and Number Sense","description":"Reads and writes numbers up to 10 000 000 in symbols and in words.","active":true},
-  {"code":"M5NS-Ic-3","grade":"Grade 5","quarter":1,"domain":"Numbers and Number Sense","description":"Uses divisibility rules for 2, 5 and 10 to find the common factors of numbers.","active":true},
-  {"code":"M5NS-IIa-1","grade":"Grade 5","quarter":2,"domain":"Numbers and Number Sense","description":"Adds and subtracts fractions with dissimilar denominators in simple and mixed forms.","active":true},
-  {"code":"M5GE-IIIa-1","grade":"Grade 5","quarter":3,"domain":"Geometry","description":"Visualizes, names and describes polygons with five or more sides.","active":true},
-  {"code":"M5ME-IVa-1","grade":"Grade 5","quarter":4,"domain":"Measurement","description":"Measures and calculates the volume of a rectangular prism using cubic units.","active":true},
-  {"code":"M6NS-Ia-1","grade":"Grade 6","quarter":1,"domain":"Numbers and Number Sense","description":"Adds and subtracts simple fractions and mixed numbers without and with regrouping.","active":true},
-  {"code":"M6NS-Ie-5","grade":"Grade 6","quarter":1,"domain":"Numbers and Number Sense","description":"Multiplies and divides decimals up to 2 decimal places.","active":true},
-  {"code":"M6AL-IIb-1","grade":"Grade 6","quarter":2,"domain":"Patterns and Algebra","description":"Formulates the rule in finding the next term in a sequence.","active":true},
-  {"code":"M6SP-IVb-2","grade":"Grade 6","quarter":4,"domain":"Statistics and Probability","description":"Constructs and interprets a pie graph based on a given set of data.","active":true},
-  {"code":"M7NS-Ia-1","grade":"Grade 7","quarter":1,"domain":"Numbers and Number Sense","description":"Describes well-defined sets, subsets, universal sets and the null set.","active":true},
-  {"code":"M7AL-IIc-1","grade":"Grade 7","quarter":2,"domain":"Patterns and Algebra","description":"Translates English phrases into mathematical phrases and vice versa.","active":true},
-  {"code":"M8AL-Ia-1","grade":"Grade 8","quarter":1,"domain":"Patterns and Algebra","description":"Factors completely different types of polynomials.","active":true},
-  {"code":"M9AL-Ia-1","grade":"Grade 9","quarter":1,"domain":"Patterns and Algebra","description":"Illustrates quadratic equations in one variable.","active":true},
-  {"code":"M10AL-Ia-1","grade":"Grade 10","quarter":1,"domain":"Patterns and Algebra","description":"Generates patterns from arithmetic and geometric sequences.","active":false}
+  {"code":"M4NS-Ia-1","grade":"Grade 3","quarter":1,"domain":"Numbers and Number Sense","description":"Visualizes numbers up to 100 000 with emphasis on numbers 10 001 to 100 000.","active":true},
+  {"code":"M4NS-IIc-4","grade":"Grade 3","quarter":2,"domain":"Numbers and Number Sense","description":"Identifies proper, improper and mixed fractions using models and number lines.","active":true},
+  {"code":"M5NS-Ia-1","grade":"Grade 3","quarter":1,"domain":"Numbers and Number Sense","description":"Visualizes numbers up to 10 000 000 with emphasis on numbers 100 001 to 10 000 000.","active":true},
+  {"code":"M5NS-Ib-2","grade":"Grade 3","quarter":1,"domain":"Numbers and Number Sense","description":"Reads and writes numbers up to 10 000 000 in symbols and in words.","active":true},
+  {"code":"M5NS-Ic-3","grade":"Grade 3","quarter":1,"domain":"Numbers and Number Sense","description":"Uses divisibility rules for 2, 5 and 10 to find the common factors of numbers.","active":true},
+  {"code":"M5NS-IIa-1","grade":"Grade 3","quarter":2,"domain":"Numbers and Number Sense","description":"Adds and subtracts fractions with dissimilar denominators in simple and mixed forms.","active":true},
+  {"code":"M5GE-IIIa-1","grade":"Grade 3","quarter":3,"domain":"Geometry","description":"Visualizes, names and describes polygons with five or more sides.","active":true},
+  {"code":"M5ME-IVa-1","grade":"Grade 3","quarter":4,"domain":"Measurement","description":"Measures and calculates the volume of a rectangular prism using cubic units.","active":true},
+  {"code":"M6NS-Ia-1","grade":"Grade 3","quarter":1,"domain":"Numbers and Number Sense","description":"Adds and subtracts simple fractions and mixed numbers without and with regrouping.","active":true},
+  {"code":"M6NS-Ie-5","grade":"Grade 3","quarter":1,"domain":"Numbers and Number Sense","description":"Multiplies and divides decimals up to 2 decimal places.","active":true},
+  {"code":"M6AL-IIb-1","grade":"Grade 3","quarter":2,"domain":"Patterns and Algebra","description":"Formulates the rule in finding the next term in a sequence.","active":true},
+  {"code":"M6SP-IVb-2","grade":"Grade 3","quarter":4,"domain":"Statistics and Probability","description":"Constructs and interprets a pie graph based on a given set of data.","active":true},
+  {"code":"M7NS-Ia-1","grade":"Grade 3","quarter":1,"domain":"Numbers and Number Sense","description":"Describes well-defined sets, subsets, universal sets and the null set.","active":true},
+  {"code":"M7AL-IIc-1","grade":"Grade 3","quarter":2,"domain":"Patterns and Algebra","description":"Translates English phrases into mathematical phrases and vice versa.","active":true},
+  {"code":"M8AL-Ia-1","grade":"Grade 3","quarter":1,"domain":"Patterns and Algebra","description":"Factors completely different types of polynomials.","active":true},
+  {"code":"M9AL-Ia-1","grade":"Grade 3","quarter":1,"domain":"Patterns and Algebra","description":"Illustrates quadratic equations in one variable.","active":true},
+  {"code":"M10AL-Ia-1","grade":"Grade 3","quarter":1,"domain":"Patterns and Algebra","description":"Generates patterns from arithmetic and geometric sequences.","active":false}
 ]
 $json$::jsonb);
 

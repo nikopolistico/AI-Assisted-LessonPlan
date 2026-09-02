@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
-import { LogOut, Menu, Moon, Sun, X } from 'lucide-vue-next'
+import { LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun, X } from 'lucide-vue-next'
 import LogoMark from './LogoMark.vue'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +17,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { useAuthStore } from '@/stores/auth'
 import { initials } from '@/lib/format'
+import { loadState, saveState } from '@/lib/persist'
 import { useTheme } from '@/composables/useTheme'
 import type { NavItem } from './nav'
 
@@ -33,6 +34,10 @@ watch(
   () => (mobileOpen.value = false),
 )
 
+// Desktop sidebar state is remembered; the mobile drawer always reopens closed.
+const collapsed = ref(loadState('alp.sidebar-collapsed', false))
+watch(collapsed, (value) => saveState('alp.sidebar-collapsed', value))
+
 function isActive(item: NavItem) {
   return item.exact ? route.path === item.to : route.path.startsWith(item.to)
 }
@@ -47,8 +52,11 @@ function signOut() {
   <div class="bg-background min-h-screen">
     <!-- Sidebar -->
     <aside
-      class="bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r transition-transform lg:translate-x-0"
-      :class="mobileOpen ? 'translate-x-0' : '-translate-x-full'"
+      class="bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r transition-transform duration-200"
+      :class="[
+        mobileOpen ? 'translate-x-0' : '-translate-x-full',
+        collapsed ? 'lg:-translate-x-full' : 'lg:translate-x-0',
+      ]"
     >
       <div class="flex h-16 items-center gap-2.5 px-4">
         <LogoMark />
@@ -56,6 +64,7 @@ function signOut() {
           <p class="truncate text-sm font-semibold">Lesson Plan AI</p>
           <p class="text-muted-foreground truncate text-xs">{{ props.workspace }}</p>
         </div>
+        <!-- Close: the drawer on small screens, the docked sidebar on large ones. -->
         <Button
           variant="ghost"
           size="icon-sm"
@@ -64,6 +73,16 @@ function signOut() {
         >
           <X />
           <span class="sr-only">Close menu</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          class="ml-auto hidden lg:inline-flex"
+          title="Hide sidebar"
+          @click="collapsed = true"
+        >
+          <PanelLeftClose />
+          <span class="sr-only">Hide sidebar</span>
         </Button>
       </div>
 
@@ -111,13 +130,25 @@ function signOut() {
     />
 
     <!-- Main -->
-    <div class="lg:pl-64">
+    <div class="transition-[padding] duration-200" :class="collapsed ? 'lg:pl-0' : 'lg:pl-64'">
       <header
         class="bg-background/85 sticky top-0 z-30 flex h-16 items-center gap-3 border-b px-4 backdrop-blur sm:px-6 no-print"
       >
         <Button variant="ghost" size="icon-sm" class="lg:hidden" @click="mobileOpen = true">
           <Menu />
           <span class="sr-only">Open menu</span>
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          class="hidden lg:inline-flex"
+          :title="collapsed ? 'Show sidebar' : 'Hide sidebar'"
+          @click="collapsed = !collapsed"
+        >
+          <PanelLeftOpen v-if="collapsed" />
+          <PanelLeftClose v-else />
+          <span class="sr-only">{{ collapsed ? 'Show sidebar' : 'Hide sidebar' }}</span>
         </Button>
 
         <p class="truncate text-sm font-medium">{{ route.meta.title ?? props.workspace }}</p>
