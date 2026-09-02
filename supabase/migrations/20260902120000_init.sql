@@ -66,10 +66,9 @@ create table if not exists public.competencies (
   active      boolean     not null default true,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now(),
-  constraint competencies_grade_check check (
-    grade in ('Grade 1','Grade 2','Grade 3','Grade 4','Grade 5',
-              'Grade 6','Grade 7','Grade 8','Grade 9','Grade 10')
-  )
+  -- The system currently covers a single grade level. Add entries here
+  -- (and to GRADE_LEVELS in src/data/seed.ts) to widen it.
+  constraint competencies_grade_check check (grade in ('Grade 3'))
 );
 
 comment on table public.competencies is

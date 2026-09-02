@@ -146,7 +146,7 @@ Example:
 const { data, error } = await supabase.rpc('generate_lesson_plan', {
   p_topic: 'Adding fractions with dissimilar denominators',
   p_competency_id: competencyId,
-  p_grade: 'Grade 5',
+  p_grade: 'Grade 3',
   p_quarter: 2,
   p_duration: 50,
   p_template_id: templateId,

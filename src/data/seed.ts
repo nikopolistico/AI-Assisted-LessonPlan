@@ -1,17 +1,6 @@
 import type { Competency, LessonPlan, LessonTemplate, User } from '@/types'
 
-export const GRADE_LEVELS = [
-  'Grade 1',
-  'Grade 2',
-  'Grade 3',
-  'Grade 4',
-  'Grade 5',
-  'Grade 6',
-  'Grade 7',
-  'Grade 8',
-  'Grade 9',
-  'Grade 10',
-] as const
+export const GRADE_LEVELS = ['Grade 3'] as const
 
 export const DURATIONS = [30, 40, 50, 60, 90, 120] as const
 
@@ -23,7 +12,7 @@ export const seedUsers: User[] = [
     role: 'teacher',
     status: 'active',
     school: 'Cebu City Central Elementary School',
-    gradeLevels: ['Grade 5', 'Grade 6'],
+    gradeLevels: ['Grade 3'],
     createdAt: '2026-01-14',
     lastLogin: '2026-08-31',
   },
@@ -45,7 +34,7 @@ export const seedUsers: User[] = [
     role: 'teacher',
     status: 'active',
     school: 'Talamban National High School',
-    gradeLevels: ['Grade 7', 'Grade 8'],
+    gradeLevels: ['Grade 3'],
     createdAt: '2026-02-20',
     lastLogin: '2026-08-29',
   },
@@ -67,7 +56,7 @@ export const seedUsers: User[] = [
     role: 'teacher',
     status: 'active',
     school: 'Banilad Elementary School',
-    gradeLevels: ['Grade 4'],
+    gradeLevels: ['Grade 3'],
     createdAt: '2026-03-11',
     lastLogin: '2026-08-30',
   },
@@ -78,7 +67,7 @@ export const seedUsers: User[] = [
     role: 'teacher',
     status: 'disabled',
     school: 'Lahug Elementary School',
-    gradeLevels: ['Grade 2'],
+    gradeLevels: ['Grade 3'],
     createdAt: '2025-12-05',
     lastLogin: '2026-05-18',
   },
@@ -99,7 +88,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-001',
     code: 'M5NS-Ia-1',
-    grade: 'Grade 5',
+    grade: 'Grade 3',
     quarter: 1,
     domain: 'Numbers and Number Sense',
     description:
@@ -109,7 +98,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-002',
     code: 'M5NS-Ib-2',
-    grade: 'Grade 5',
+    grade: 'Grade 3',
     quarter: 1,
     domain: 'Numbers and Number Sense',
     description: 'Reads and writes numbers up to 10 000 000 in symbols and in words.',
@@ -118,7 +107,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-003',
     code: 'M5NS-Ic-3',
-    grade: 'Grade 5',
+    grade: 'Grade 3',
     quarter: 1,
     domain: 'Numbers and Number Sense',
     description: 'Uses divisibility rules for 2, 5 and 10 to find the common factors of numbers.',
@@ -127,7 +116,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-004',
     code: 'M5NS-IIa-1',
-    grade: 'Grade 5',
+    grade: 'Grade 3',
     quarter: 2,
     domain: 'Numbers and Number Sense',
     description:
@@ -137,7 +126,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-005',
     code: 'M5GE-IIIa-1',
-    grade: 'Grade 5',
+    grade: 'Grade 3',
     quarter: 3,
     domain: 'Geometry',
     description: 'Visualizes, names and describes polygons with five or more sides.',
@@ -146,7 +135,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-006',
     code: 'M5ME-IVa-1',
-    grade: 'Grade 5',
+    grade: 'Grade 3',
     quarter: 4,
     domain: 'Measurement',
     description: 'Measures and calculates the volume of a rectangular prism using cubic units.',
@@ -155,7 +144,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-007',
     code: 'M6NS-Ia-1',
-    grade: 'Grade 6',
+    grade: 'Grade 3',
     quarter: 1,
     domain: 'Numbers and Number Sense',
     description:
@@ -165,7 +154,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-008',
     code: 'M6NS-Ie-5',
-    grade: 'Grade 6',
+    grade: 'Grade 3',
     quarter: 1,
     domain: 'Numbers and Number Sense',
     description: 'Multiplies and divides decimals up to 2 decimal places.',
@@ -174,7 +163,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-009',
     code: 'M6AL-IIb-1',
-    grade: 'Grade 6',
+    grade: 'Grade 3',
     quarter: 2,
     domain: 'Patterns and Algebra',
     description: 'Formulates the rule in finding the next term in a sequence.',
@@ -183,7 +172,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-010',
     code: 'M4NS-Ia-1',
-    grade: 'Grade 4',
+    grade: 'Grade 3',
     quarter: 1,
     domain: 'Numbers and Number Sense',
     description: 'Visualizes numbers up to 100 000 with emphasis on numbers 10 001 to 100 000.',
@@ -192,7 +181,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-011',
     code: 'M4NS-IIc-4',
-    grade: 'Grade 4',
+    grade: 'Grade 3',
     quarter: 2,
     domain: 'Numbers and Number Sense',
     description: 'Identifies proper, improper and mixed fractions using models and number lines.',
@@ -201,7 +190,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-012',
     code: 'M7NS-Ia-1',
-    grade: 'Grade 7',
+    grade: 'Grade 3',
     quarter: 1,
     domain: 'Numbers and Number Sense',
     description: 'Describes well-defined sets, subsets, universal sets and the null set.',
@@ -210,7 +199,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-013',
     code: 'M7AL-IIc-1',
-    grade: 'Grade 7',
+    grade: 'Grade 3',
     quarter: 2,
     domain: 'Patterns and Algebra',
     description: 'Translates English phrases into mathematical phrases and vice versa.',
@@ -219,7 +208,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-014',
     code: 'M8AL-Ia-1',
-    grade: 'Grade 8',
+    grade: 'Grade 3',
     quarter: 1,
     domain: 'Patterns and Algebra',
     description: 'Factors completely different types of polynomials.',
@@ -228,7 +217,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-015',
     code: 'M9AL-Ia-1',
-    grade: 'Grade 9',
+    grade: 'Grade 3',
     quarter: 1,
     domain: 'Patterns and Algebra',
     description: 'Illustrates quadratic equations in one variable.',
@@ -237,7 +226,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-016',
     code: 'M10AL-Ia-1',
-    grade: 'Grade 10',
+    grade: 'Grade 3',
     quarter: 1,
     domain: 'Patterns and Algebra',
     description: 'Generates patterns from arithmetic and geometric sequences.',
@@ -256,7 +245,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-018',
     code: 'M2NS-Ib-2',
-    grade: 'Grade 2',
+    grade: 'Grade 3',
     quarter: 1,
     domain: 'Numbers and Number Sense',
     description: 'Groups objects into tens, hundreds and thousands.',
@@ -265,7 +254,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-019',
     code: 'M1NS-Ia-1',
-    grade: 'Grade 1',
+    grade: 'Grade 3',
     quarter: 1,
     domain: 'Numbers and Number Sense',
     description: 'Recites numbers from 0 to 100 forward and backward.',
@@ -274,7 +263,7 @@ export const seedCompetencies: Competency[] = [
   {
     id: 'c-020',
     code: 'M6SP-IVb-2',
-    grade: 'Grade 6',
+    grade: 'Grade 3',
     quarter: 4,
     domain: 'Statistics and Probability',
     description: 'Constructs and interprets a pie graph based on a given set of data.',
@@ -339,7 +328,7 @@ export const seedPlans: LessonPlan[] = [
     topic: 'Reading and writing large numbers',
     competencyId: 'c-002',
     competencyCode: 'M5NS-Ib-2',
-    grade: 'Grade 5',
+    grade: 'Grade 3',
     quarter: 1,
     duration: 60,
     templateId: 't-001',
@@ -399,7 +388,7 @@ export const seedPlans: LessonPlan[] = [
     topic: 'Adding dissimilar fractions',
     competencyId: 'c-004',
     competencyCode: 'M5NS-IIa-1',
-    grade: 'Grade 5',
+    grade: 'Grade 3',
     quarter: 2,
     duration: 50,
     templateId: 't-002',
@@ -470,7 +459,7 @@ export const seedPlans: LessonPlan[] = [
     topic: 'Volume using cubic units',
     competencyId: 'c-006',
     competencyCode: 'M5ME-IVa-1',
-    grade: 'Grade 5',
+    grade: 'Grade 3',
     quarter: 4,
     duration: 60,
     templateId: 't-003',
@@ -517,7 +506,7 @@ export const seedPlans: LessonPlan[] = [
     ],
     assessment: 'Three-item problem set; correct unit labels are required for full credit.',
     assignment: 'Measure a box at home and compute its volume in cubic centimetres.',
-    remarks: 'Borrow the extra set of unit cubes from Grade 6 the day before.',
+    remarks: 'Borrow the extra set of unit cubes from the learning resource room the day before.',
     createdAt: '2026-07-30T05:00:00.000Z',
     updatedAt: '2026-08-02T07:45:00.000Z',
     generationCount: 3,
@@ -528,7 +517,7 @@ export const seedPlans: LessonPlan[] = [
     topic: 'Multiplying decimals',
     competencyId: 'c-008',
     competencyCode: 'M6NS-Ie-5',
-    grade: 'Grade 6',
+    grade: 'Grade 3',
     quarter: 1,
     duration: 50,
     templateId: 't-001',

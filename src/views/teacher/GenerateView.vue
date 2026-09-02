@@ -34,7 +34,7 @@ const plans = usePlansStore()
 const form = reactive<LessonRequest>({
   topic: '',
   competencyId: '',
-  grade: auth.currentUser?.gradeLevels[0] ?? 'Grade 5',
+  grade: auth.currentUser?.gradeLevels[0] ?? 'Grade 3',
   quarter: 1,
   duration: 60,
   templateId: catalog.defaultTemplate?.id ?? '',

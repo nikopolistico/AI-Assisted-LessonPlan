@@ -76,7 +76,7 @@ const formError = ref('')
 
 const form = reactive({
   code: '',
-  grade: 'Grade 5',
+  grade: 'Grade 3',
   quarter: '1',
   domain: 'Numbers and Number Sense',
   description: '',
@@ -99,7 +99,7 @@ function openCreate() {
   formError.value = ''
   Object.assign(form, {
     code: '',
-    grade: 'Grade 5',
+    grade: 'Grade 3',
     quarter: '1',
     domain: 'Numbers and Number Sense',
     description: '',
