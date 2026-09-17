@@ -247,7 +247,7 @@ async function submitRegistration() {
       password: regForm.password,
       gradeLevels: [...regForm.gradeLevels],
     })
-    regNotice.value = `${regForm.fullName.trim()}'s account was created. If the project requires email confirmation, they must confirm it before signing in.`
+    regNotice.value = `${regForm.fullName.trim()}'s account was created and is ready to sign in with the password above.`
     regForm.fullName = ''
     regForm.email = ''
     regForm.password = ''
