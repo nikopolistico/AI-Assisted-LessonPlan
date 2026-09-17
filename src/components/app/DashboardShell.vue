@@ -133,7 +133,9 @@ async function confirmSignOut() {
             class="ml-auto tabular-nums"
             :class="[
               collapsed && 'lg:hidden',
-              isActive(item) ? 'bg-white/15 text-white' : 'bg-amber-400/15 text-amber-300',
+              isActive(item)
+                ? 'bg-white/15 text-white'
+                : 'bg-(--brand-gold)/15 text-(--brand-gold)',
             ]"
           >
             {{ item.badge }}
@@ -141,7 +143,7 @@ async function confirmSignOut() {
           <!-- The count has no room on the rail, so it becomes a dot. -->
           <span
             v-if="item.badge && collapsed"
-            class="absolute top-1 right-1 hidden size-1.5 rounded-full bg-amber-400 lg:block"
+            class="absolute top-1 right-1 hidden size-1.5 rounded-full bg-(--brand-gold) lg:block"
           />
         </RouterLink>
       </nav>
@@ -153,9 +155,9 @@ async function confirmSignOut() {
       >
         <span class="relative flex size-1.5 shrink-0">
           <span
-            class="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75"
+            class="absolute inline-flex size-full animate-ping rounded-full bg-(--brand-green) opacity-75"
           />
-          <span class="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
+          <span class="relative inline-flex size-1.5 rounded-full bg-(--brand-green)" />
         </span>
         <span class="text-sidebar-foreground/65 truncate text-xs" :class="collapsed && 'lg:hidden'">
           Connected

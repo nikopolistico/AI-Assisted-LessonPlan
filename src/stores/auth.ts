@@ -5,13 +5,6 @@ import type { Role, User } from '@/types'
 import { supabase } from '@/lib/supabase'
 import { toUser } from '@/lib/mappers'
 
-export interface SignUpInput {
-  fullName: string
-  email: string
-  school: string
-  password: string
-}
-
 export const useAuthStore = defineStore('auth', () => {
   const session = ref<Session | null>(null)
   const currentUser = ref<User | null>(null)
@@ -103,37 +96,6 @@ export const useAuthStore = defineStore('auth', () => {
     return profile
   }
 
-  async function signUp(input: SignUpInput) {
-    pending.value = true
-    error.value = ''
-
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: input.email.trim(),
-      password: input.password,
-      options: {
-        data: { full_name: input.fullName.trim(), school: input.school.trim() },
-      },
-    })
-
-    if (signUpError) {
-      pending.value = false
-      error.value = signUpError.message
-      return false
-    }
-
-    // With "Confirm email" off, sign-up returns a live session — keep it so the
-    // teacher is taken straight into the app. With confirmation on, there is no
-    // session yet and they sign in after confirming.
-    if (data.session) {
-      session.value = data.session
-      currentUser.value = await fetchProfile(data.session.user.id)
-      if (currentUser.value) await supabase.rpc('record_login')
-    }
-
-    pending.value = false
-    return true
-  }
-
   async function logout() {
     await supabase.auth.signOut()
     currentUser.value = null
@@ -152,7 +114,6 @@ export const useAuthStore = defineStore('auth', () => {
     pending,
     ensureReady,
     login,
-    signUp,
     logout,
   }
 })

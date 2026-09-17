@@ -1,10 +1,18 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { Role, User, UserStatus } from '@/types'
-import { supabase } from '@/lib/supabase'
+import { supabase, supabaseAdminAuth } from '@/lib/supabase'
 import { toUser } from '@/lib/mappers'
 
 export type UserDraft = Omit<User, 'id' | 'createdAt' | 'lastLogin'>
+
+export interface RegisterTeacherInput {
+  fullName: string
+  email: string
+  school: string
+  password: string
+  gradeLevels: string[]
+}
 
 /**
  * Accounts, read from `public.users`. Row Level Security returns every row to
@@ -52,7 +60,8 @@ export const useUsersStore = defineStore('users', () => {
       .eq('id', id)
       .select()
       .single()
-    if (updateError || !data) throw new Error(updateError?.message ?? 'The account could not be saved.')
+    if (updateError || !data)
+      throw new Error(updateError?.message ?? 'The account could not be saved.')
     replace(toUser(data))
   }
 
@@ -74,6 +83,41 @@ export const useUsersStore = defineStore('users', () => {
     replace(toUser(data))
   }
 
+  /**
+   * Creates a teacher account from the admin dashboard. Uses `supabaseAdminAuth`
+   * (see src/lib/supabase.ts) so the new account's session never replaces the
+   * calling admin's own session.
+   */
+  async function registerTeacher(input: RegisterTeacherInput) {
+    const { data, error: signUpError } = await supabaseAdminAuth.auth.signUp({
+      email: input.email.trim(),
+      password: input.password,
+      options: {
+        data: { full_name: input.fullName.trim(), school: input.school.trim(), role: 'teacher' },
+      },
+    })
+    await supabaseAdminAuth.auth.signOut()
+
+    if (signUpError) throw new Error(signUpError.message)
+    // Supabase returns a "successful" response with no identities for an email
+    // that is already registered, rather than an error, to avoid leaking which
+    // emails exist.
+    if (!data.user || data.user.identities?.length === 0) {
+      throw new Error('An account with that email already exists.')
+    }
+
+    if (input.gradeLevels.length) {
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ grade_levels: input.gradeLevels })
+        .eq('id', data.user.id)
+      if (updateError) throw new Error(updateError.message)
+    }
+
+    await fetchAll()
+    return data.user.id
+  }
+
   async function remove(id: string) {
     const { error: deleteError } = await supabase.from('users').delete().eq('id', id)
     if (deleteError) throw new Error(deleteError.message)
@@ -93,6 +137,7 @@ export const useUsersStore = defineStore('users', () => {
     update,
     setStatus,
     setRole,
+    registerTeacher,
     remove,
   }
 })

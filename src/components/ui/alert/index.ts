@@ -11,8 +11,8 @@ export const alertVariants = cva(
       variant: {
         default: 'bg-card text-card-foreground',
         destructive: 'text-destructive bg-destructive/5 border-destructive/30 [&>svg]:text-current',
-        info: 'text-sky-800 dark:text-sky-300 bg-sky-500/8 border-sky-500/25',
-        success: 'text-emerald-800 dark:text-emerald-300 bg-emerald-500/8 border-emerald-500/25',
+        info: 'text-(--brand-navy) dark:text-[#8fa3d1] bg-(--brand-navy)/6 border-(--brand-navy)/25',
+        success: 'text-[#4e7638] dark:text-[#a3cf8c] bg-(--brand-green)/8 border-(--brand-green)/25',
       },
     },
     defaultVariants: { variant: 'default' },

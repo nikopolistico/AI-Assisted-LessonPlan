@@ -24,3 +24,22 @@ export const supabase = createClient<Database>(url ?? 'http://localhost', anonKe
     detectSessionInUrl: true,
   },
 })
+
+/**
+ * A second, unpersisted client used only to create teacher accounts from the
+ * admin dashboard. `auth.signUp` on the main client would swap the caller's
+ * own session for the new account's session as soon as it succeeds — this
+ * client keeps its own (never-saved) session so registering a teacher can't
+ * sign the admin out of theirs.
+ */
+export const supabaseAdminAuth = createClient<Database>(
+  url ?? 'http://localhost',
+  anonKey ?? 'anon',
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  },
+)
