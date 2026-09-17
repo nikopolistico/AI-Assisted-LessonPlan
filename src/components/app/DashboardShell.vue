@@ -7,6 +7,16 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -42,8 +52,12 @@ function isActive(item: NavItem) {
   return item.exact ? route.path === item.to : route.path.startsWith(item.to)
 }
 
-function signOut() {
-  auth.logout()
+const signOutOpen = ref(false)
+
+async function confirmSignOut() {
+  // Wait for the session to actually clear before navigating, otherwise the
+  // router guard still sees an authenticated user and bounces back here.
+  await auth.logout()
   router.push({ name: 'login' })
 }
 </script>
@@ -52,7 +66,7 @@ function signOut() {
   <div class="bg-background min-h-screen">
     <!-- Sidebar -->
     <aside
-      class="bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r transition-[width,transform] duration-200 lg:translate-x-0"
+      class="bg-sidebar text-sidebar-foreground border-sidebar-border fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r transition-[width,transform] duration-200 lg:translate-x-0"
       :class="[
         mobileOpen ? 'translate-x-0' : '-translate-x-full',
         collapsed ? 'lg:w-16' : 'lg:w-64',
@@ -65,14 +79,14 @@ function signOut() {
         <LogoMark :class="collapsed && 'lg:hidden'" />
         <div class="min-w-0" :class="collapsed && 'lg:hidden'">
           <p class="truncate text-sm font-semibold">Lesson Plan AI</p>
-          <p class="text-muted-foreground truncate text-xs">{{ props.workspace }}</p>
+          <p class="text-sidebar-foreground/65 truncate text-xs">{{ props.workspace }}</p>
         </div>
 
         <!-- Mobile: the drawer covers the header, so it closes itself. -->
         <Button
           variant="ghost"
           size="icon-sm"
-          class="ml-auto lg:hidden"
+          class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ml-auto lg:hidden"
           @click="mobileOpen = false"
         >
           <X />
@@ -83,7 +97,7 @@ function signOut() {
         <Button
           variant="ghost"
           size="icon-sm"
-          class="hidden lg:inline-flex"
+          class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hidden lg:inline-flex"
           :class="!collapsed && 'lg:ml-auto'"
           :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
           @click="collapsed = !collapsed"
@@ -94,7 +108,7 @@ function signOut() {
         </Button>
       </div>
 
-      <Separator />
+      <Separator class="bg-sidebar-border" />
 
       <nav class="flex-1 space-y-1 overflow-y-auto p-3" :class="collapsed && 'lg:px-2'">
         <RouterLink
@@ -106,7 +120,7 @@ function signOut() {
           :class="[
             isActive(item)
               ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-xs'
-              : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+              : 'text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
             collapsed && 'lg:justify-center lg:px-0',
           ]"
         >
@@ -117,25 +131,35 @@ function signOut() {
             v-if="item.badge"
             :variant="isActive(item) ? 'secondary' : 'warning'"
             class="ml-auto tabular-nums"
-            :class="collapsed && 'lg:hidden'"
+            :class="[
+              collapsed && 'lg:hidden',
+              isActive(item) ? 'bg-white/15 text-white' : 'bg-amber-400/15 text-amber-300',
+            ]"
           >
             {{ item.badge }}
           </Badge>
           <!-- The count has no room on the rail, so it becomes a dot. -->
           <span
             v-if="item.badge && collapsed"
-            class="bg-primary absolute top-1 right-1 hidden size-1.5 rounded-full lg:block"
+            class="absolute top-1 right-1 hidden size-1.5 rounded-full bg-amber-400 lg:block"
           />
         </RouterLink>
       </nav>
 
-      <div class="p-3" :class="collapsed && 'lg:hidden'">
-        <div class="bg-muted/60 rounded-lg p-3">
-          <p class="text-xs font-medium">Prototype data</p>
-          <p class="text-muted-foreground mt-1 text-xs leading-relaxed">
-            Everything you change is stored in this browser only.
-          </p>
-        </div>
+      <div
+        class="border-sidebar-border flex items-center gap-2 border-t px-4 py-3"
+        :class="collapsed && 'lg:justify-center lg:px-0'"
+        title="Connected to Supabase"
+      >
+        <span class="relative flex size-1.5 shrink-0">
+          <span
+            class="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75"
+          />
+          <span class="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
+        </span>
+        <span class="text-sidebar-foreground/65 truncate text-xs" :class="collapsed && 'lg:hidden'">
+          Connected
+        </span>
       </div>
     </aside>
 
@@ -194,7 +218,7 @@ function signOut() {
                 }}</Badge>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" @select="signOut">
+              <DropdownMenuItem variant="destructive" @select.prevent="signOutOpen = true">
                 <LogOut />
                 Sign out
               </DropdownMenuItem>
@@ -207,5 +231,22 @@ function signOut() {
         <RouterView />
       </main>
     </div>
+
+    <AlertDialog v-model:open="signOutOpen">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Sign out?</AlertDialogTitle>
+          <AlertDialogDescription>
+            You'll be signed out of your account and returned to the sign-in page.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" @click="confirmSignOut"
+            >Sign out</AlertDialogAction
+          >
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>

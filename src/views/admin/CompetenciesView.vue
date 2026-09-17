@@ -50,14 +50,12 @@ const catalog = useCatalogStore()
 const plans = usePlansStore()
 
 const search = ref('')
-const gradeFilter = ref('all')
 const quarterFilter = ref('all')
 const domainFilter = ref('all')
 
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
   return catalog.competencies.filter((item) => {
-    if (gradeFilter.value !== 'all' && item.grade !== gradeFilter.value) return false
     if (quarterFilter.value !== 'all' && String(item.quarter) !== quarterFilter.value) return false
     if (domainFilter.value !== 'all' && item.domain !== domainFilter.value) return false
     if (!q) return true
@@ -122,7 +120,9 @@ function openEdit(item: Competency) {
   dialogOpen.value = true
 }
 
-function submit() {
+const saving = ref(false)
+
+async function submit() {
   formError.value = ''
   if (!form.code.trim() || !form.description.trim()) {
     formError.value = 'A MELC code and description are required.'
@@ -145,16 +145,30 @@ function submit() {
     active: form.active,
   }
 
-  if (editingId.value) catalog.updateCompetency(editingId.value, payload)
-  else catalog.addCompetency(payload)
+  saving.value = true
+  try {
+    if (editingId.value) await catalog.updateCompetency(editingId.value, payload)
+    else await catalog.addCompetency(payload)
+    dialogOpen.value = false
+  } catch (e) {
+    formError.value = e instanceof Error ? e.message : 'Could not save the competency.'
+  } finally {
+    saving.value = false
+  }
+}
 
-  dialogOpen.value = false
+async function toggleActive(item: Competency) {
+  try {
+    await catalog.updateCompetency(item.id, { active: !item.active })
+  } catch {
+    // The row keeps its previous state on failure.
+  }
 }
 
 const pendingDelete = ref<Competency | null>(null)
 
-function confirmDelete() {
-  if (pendingDelete.value) catalog.removeCompetency(pendingDelete.value.id)
+async function confirmDelete() {
+  if (pendingDelete.value) await catalog.removeCompetency(pendingDelete.value.id)
   pendingDelete.value = null
 }
 </script>
@@ -173,23 +187,13 @@ function confirmDelete() {
   </PageHeader>
 
   <Card class="gap-0 py-0">
-    <CardContent class="grid gap-3 border-b p-4 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto]">
+    <CardContent class="grid gap-3 border-b p-4 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto]">
       <div class="relative">
         <Search
           class="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
         />
         <Input v-model="search" placeholder="Search by code or description" class="pl-9" />
       </div>
-
-      <Select v-model="gradeFilter">
-        <SelectTrigger class="lg:w-[9.5rem]">
-          <SelectValue placeholder="Grade level" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All grade levels</SelectItem>
-          <SelectItem v-for="g in GRADE_LEVELS" :key="g" :value="g">{{ g }}</SelectItem>
-        </SelectContent>
-      </Select>
 
       <Select v-model="quarterFilter">
         <SelectTrigger class="lg:w-[8.5rem]">
@@ -271,9 +275,7 @@ function confirmDelete() {
                     <Pencil />
                     Edit
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    @select="catalog.updateCompetency(item.id, { active: !item.active })"
-                  >
+                  <DropdownMenuItem @select="toggleActive(item)">
                     {{ item.active ? 'Set inactive' : 'Set active' }}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -320,31 +322,18 @@ function confirmDelete() {
           </div>
         </div>
 
-        <div class="grid gap-4 sm:grid-cols-2">
-          <div class="space-y-2">
-            <Label for="c-grade">Grade level</Label>
-            <Select v-model="form.grade">
-              <SelectTrigger id="c-grade">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="g in GRADE_LEVELS" :key="g" :value="g">{{ g }}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div class="space-y-2">
-            <Label for="c-quarter">Quarter</Label>
-            <Select v-model="form.quarter">
-              <SelectTrigger id="c-quarter">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="q in [1, 2, 3, 4]" :key="q" :value="String(q)"
-                  >Quarter {{ q }}</SelectItem
-                >
-              </SelectContent>
-            </Select>
-          </div>
+        <div class="space-y-2">
+          <Label for="c-quarter">Quarter</Label>
+          <Select v-model="form.quarter">
+            <SelectTrigger id="c-quarter">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="q in [1, 2, 3, 4]" :key="q" :value="String(q)"
+                >Quarter {{ q }}</SelectItem
+              >
+            </SelectContent>
+          </Select>
         </div>
 
         <div class="space-y-2">
@@ -371,7 +360,9 @@ function confirmDelete() {
 
         <DialogFooter>
           <Button type="button" variant="outline" @click="dialogOpen = false">Cancel</Button>
-          <Button type="submit">{{ editingId ? 'Save changes' : 'Add competency' }}</Button>
+          <Button type="submit" :disabled="saving">
+            {{ editingId ? 'Save changes' : 'Add competency' }}
+          </Button>
         </DialogFooter>
       </form>
     </DialogContent>

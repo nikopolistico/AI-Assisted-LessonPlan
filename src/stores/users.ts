@@ -1,17 +1,31 @@
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { Role, User, UserStatus } from '@/types'
-import { seedUsers } from '@/data/seed'
-import { loadState, saveState } from '@/lib/persist'
-
-const KEY = 'alp.users'
+import { supabase } from '@/lib/supabase'
+import { toUser } from '@/lib/mappers'
 
 export type UserDraft = Omit<User, 'id' | 'createdAt' | 'lastLogin'>
 
+/**
+ * Accounts, read from `public.users`. Row Level Security returns every row to
+ * an admin and only the caller's own row to a teacher.
+ */
 export const useUsersStore = defineStore('users', () => {
-  const all = ref<User[]>(loadState<User[]>(KEY, seedUsers))
+  const all = ref<User[]>([])
+  const loading = ref(false)
+  const error = ref('')
 
-  watch(all, (value) => saveState(KEY, value), { deep: true })
+  async function fetchAll() {
+    loading.value = true
+    error.value = ''
+    const { data, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (fetchError) error.value = fetchError.message
+    else all.value = data.map(toUser)
+    loading.value = false
+  }
 
   const teachers = computed(() => all.value.filter((u) => u.role === 'teacher'))
   const admins = computed(() => all.value.filter((u) => u.role === 'admin'))
@@ -22,54 +36,63 @@ export const useUsersStore = defineStore('users', () => {
     return all.value.find((u) => u.id === id) ?? null
   }
 
-  function create(draft: UserDraft) {
-    const user: User = {
-      ...draft,
-      id: `u-${Math.random().toString(36).slice(2, 8)}`,
-      createdAt: new Date().toISOString(),
-      lastLogin: null,
-    }
-    all.value = [user, ...all.value]
-    return user
+  function replace(row: User) {
+    all.value = all.value.map((u) => (u.id === row.id ? row : u))
   }
 
-  function update(id: string, patch: Partial<User>) {
-    all.value = all.value.map((u) => (u.id === id ? { ...u, ...patch } : u))
+  /** Editable profile fields. Role and status go through the RPCs below. */
+  async function update(id: string, patch: Partial<User>) {
+    const { data, error: updateError } = await supabase
+      .from('users')
+      .update({
+        full_name: patch.name,
+        school: patch.school,
+        grade_levels: patch.gradeLevels,
+      })
+      .eq('id', id)
+      .select()
+      .single()
+    if (updateError || !data) throw new Error(updateError?.message ?? 'The account could not be saved.')
+    replace(toUser(data))
   }
 
-  function setStatus(id: string, status: UserStatus) {
-    update(id, { status })
+  async function setStatus(id: string, status: UserStatus) {
+    const { data, error: rpcError } =
+      status === 'active'
+        ? await supabase.rpc('approve_user', { p_user_id: id })
+        : await supabase.rpc('set_user_status', { p_user_id: id, p_status: status })
+    if (rpcError || !data) throw new Error(rpcError?.message ?? 'The status could not be changed.')
+    replace(toUser(data))
   }
 
-  function setRole(id: string, role: Role) {
-    update(id, { role })
+  async function setRole(id: string, role: Role) {
+    const { data, error: rpcError } = await supabase.rpc('set_user_role', {
+      p_user_id: id,
+      p_role: role,
+    })
+    if (rpcError || !data) throw new Error(rpcError?.message ?? 'The role could not be changed.')
+    replace(toUser(data))
   }
 
-  function remove(id: string) {
+  async function remove(id: string) {
+    const { error: deleteError } = await supabase.from('users').delete().eq('id', id)
+    if (deleteError) throw new Error(deleteError.message)
     all.value = all.value.filter((u) => u.id !== id)
-  }
-
-  function markLogin(id: string) {
-    update(id, { lastLogin: new Date().toISOString() })
-  }
-
-  function reset() {
-    all.value = seedUsers
   }
 
   return {
     all,
+    loading,
+    error,
+    fetchAll,
     teachers,
     admins,
     pendingCount,
     activeCount,
     byId,
-    create,
     update,
     setStatus,
     setRole,
     remove,
-    markLogin,
-    reset,
   }
 })

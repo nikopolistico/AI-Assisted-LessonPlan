@@ -1,63 +1,158 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import type { Session } from '@supabase/supabase-js'
 import type { Role, User } from '@/types'
-import { seedUsers } from '@/data/seed'
-import { clearState, loadState, saveState } from '@/lib/persist'
-import { useUsersStore } from './users'
+import { supabase } from '@/lib/supabase'
+import { toUser } from '@/lib/mappers'
 
-const KEY = 'alp.session'
-
-/** Demo credential — every seeded account accepts it. */
-export const DEMO_PASSWORD = 'lessonplan'
+export interface SignUpInput {
+  fullName: string
+  email: string
+  school: string
+  password: string
+}
 
 export const useAuthStore = defineStore('auth', () => {
-  const userId = ref<string | null>(loadState<string | null>(KEY, null))
+  const session = ref<Session | null>(null)
+  const currentUser = ref<User | null>(null)
+  const ready = ref(false)
   const error = ref('')
   const pending = ref(false)
 
-  const users = useUsersStore()
-
-  const currentUser = computed<User | null>(
-    () =>
-      users.all.find((u) => u.id === userId.value) ??
-      seedUsers.find((u) => u.id === userId.value) ??
-      null,
-  )
   const isAuthenticated = computed(() => currentUser.value !== null)
   const role = computed<Role | null>(() => currentUser.value?.role ?? null)
+  const userId = computed(() => currentUser.value?.id ?? null)
+
+  let markReady!: () => void
+  const readyPromise = new Promise<void>((resolve) => {
+    markReady = resolve
+  })
+
+  /** Resolves once the initial session has been checked — used by the router guard. */
+  function ensureReady() {
+    return readyPromise
+  }
+
+  async function fetchProfile(uid: string): Promise<User | null> {
+    const { data } = await supabase.from('users').select('*').eq('id', uid).single()
+    return data ? toUser(data) : null
+  }
+
+  async function syncSession(next: Session | null) {
+    session.value = next
+    currentUser.value = next ? await fetchProfile(next.user.id) : null
+  }
+
+  supabase.auth
+    .getSession()
+    .then(({ data }) => syncSession(data.session))
+    .finally(() => {
+      ready.value = true
+      markReady()
+    })
+
+  supabase.auth.onAuthStateChange((_event, next) => {
+    void syncSession(next)
+  })
+
+  /** Turns Supabase's raw sign-in errors into something a teacher can act on. */
+  function describeSignInError(message?: string) {
+    const m = (message ?? '').toLowerCase()
+    if (m.includes('email not confirmed')) {
+      return 'This email address has not been confirmed yet. Ask your administrator to confirm the account.'
+    }
+    if (m.includes('invalid login credentials')) return 'Incorrect email or password.'
+    return message || 'Sign in failed. Please try again.'
+  }
 
   async function login(email: string, password: string) {
     pending.value = true
     error.value = ''
-    await new Promise((r) => setTimeout(r, 550))
 
-    const match = users.all.find((u) => u.email.toLowerCase() === email.trim().toLowerCase())
-    pending.value = false
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    })
 
-    if (!match || password !== DEMO_PASSWORD) {
-      error.value = 'Incorrect email or password.'
+    if (signInError || !data.session) {
+      pending.value = false
+      error.value = describeSignInError(signInError?.message)
       return null
     }
-    if (match.status === 'disabled') {
+
+    const profile = await fetchProfile(data.user.id)
+
+    if (!profile) {
+      await supabase.auth.signOut()
+      pending.value = false
+      error.value = 'No profile is linked to this account. Contact your division administrator.'
+      return null
+    }
+    if (profile.status === 'disabled') {
+      await supabase.auth.signOut()
+      pending.value = false
       error.value = 'This account has been disabled. Contact your division administrator.'
       return null
     }
-    if (match.status === 'pending') {
-      error.value = 'This account is still awaiting administrator approval.'
-      return null
+
+    session.value = data.session
+    currentUser.value = profile
+    await supabase.rpc('record_login')
+
+    pending.value = false
+    return profile
+  }
+
+  async function signUp(input: SignUpInput) {
+    pending.value = true
+    error.value = ''
+
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email: input.email.trim(),
+      password: input.password,
+      options: {
+        data: { full_name: input.fullName.trim(), school: input.school.trim() },
+      },
+    })
+
+    if (signUpError) {
+      pending.value = false
+      error.value = signUpError.message
+      return false
     }
 
-    userId.value = match.id
-    saveState(KEY, match.id)
-    users.markLogin(match.id)
-    return match
+    // With "Confirm email" off, sign-up returns a live session — keep it so the
+    // teacher is taken straight into the app. With confirmation on, there is no
+    // session yet and they sign in after confirming.
+    if (data.session) {
+      session.value = data.session
+      currentUser.value = await fetchProfile(data.session.user.id)
+      if (currentUser.value) await supabase.rpc('record_login')
+    }
+
+    pending.value = false
+    return true
   }
 
-  function logout() {
-    userId.value = null
+  async function logout() {
+    await supabase.auth.signOut()
+    currentUser.value = null
+    session.value = null
     error.value = ''
-    clearState(KEY)
   }
 
-  return { userId, currentUser, isAuthenticated, role, error, pending, login, logout }
+  return {
+    session,
+    currentUser,
+    userId,
+    ready,
+    isAuthenticated,
+    role,
+    error,
+    pending,
+    ensureReady,
+    login,
+    signUp,
+    logout,
+  }
 })

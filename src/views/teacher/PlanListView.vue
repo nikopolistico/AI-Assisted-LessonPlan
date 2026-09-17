@@ -39,7 +39,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { GRADE_LEVELS } from '@/data/seed'
 import type { LessonPlan } from '@/types'
 import { useAuthStore } from '@/stores/auth'
 import { usePlansStore } from '@/stores/plans'
@@ -50,7 +49,6 @@ const plans = usePlansStore()
 const router = useRouter()
 
 const search = ref('')
-const grade = ref('all')
 const status = ref('all')
 
 const mine = computed(() => (auth.currentUser ? plans.forOwner(auth.currentUser.id) : []))
@@ -58,7 +56,6 @@ const mine = computed(() => (auth.currentUser ? plans.forOwner(auth.currentUser.
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
   return mine.value.filter((plan) => {
-    if (grade.value !== 'all' && plan.grade !== grade.value) return false
     if (status.value !== 'all' && plan.status !== status.value) return false
     if (!q) return true
     return (
@@ -71,13 +68,13 @@ const filtered = computed(() => {
 
 const pendingDelete = ref<LessonPlan | null>(null)
 
-function confirmDelete() {
-  if (pendingDelete.value) plans.remove(pendingDelete.value.id)
+async function confirmDelete() {
+  if (pendingDelete.value) await plans.remove(pendingDelete.value.id)
   pendingDelete.value = null
 }
 
-function duplicate(id: string) {
-  const copy = plans.duplicate(id)
+async function duplicate(id: string) {
+  const copy = await plans.duplicate(id)
   if (copy) router.push(`/teacher/plans/${copy.id}`)
 }
 </script>
@@ -107,16 +104,6 @@ function duplicate(id: string) {
       </div>
 
       <div class="flex gap-3">
-        <Select v-model="grade">
-          <SelectTrigger class="w-[9.5rem]">
-            <SelectValue placeholder="Grade level" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All grade levels</SelectItem>
-            <SelectItem v-for="g in GRADE_LEVELS" :key="g" :value="g">{{ g }}</SelectItem>
-          </SelectContent>
-        </Select>
-
         <Select v-model="status">
           <SelectTrigger class="w-[8.5rem]">
             <SelectValue placeholder="Status" />

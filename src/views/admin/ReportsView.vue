@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { Activity, Download, FileText, Sparkles, TrendingUp, Users } from 'lucide-vue-next'
 import PageHeader from '@/components/app/PageHeader.vue'
 import StatCard from '@/components/app/StatCard.vue'
@@ -7,13 +7,6 @@ import EmptyState from '@/components/app/EmptyState.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -23,33 +16,28 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { GRADE_LEVELS } from '@/data/seed'
 import { useUsersStore } from '@/stores/users'
 import { useCatalogStore } from '@/stores/catalog'
 import { usePlansStore } from '@/stores/plans'
-import { formatDate } from '@/lib/format'
+import { formatDate, romanQuarter } from '@/lib/format'
 
 const users = useUsersStore()
 const catalog = useCatalogStore()
 const plans = usePlansStore()
 
-const gradeFilter = ref('all')
-
-const scoped = computed(() =>
-  gradeFilter.value === 'all' ? plans.all : plans.all.filter((p) => p.grade === gradeFilter.value),
-)
-
-const byGrade = computed(() => {
-  const max = Math.max(1, ...GRADE_LEVELS.map((g) => plans.all.filter((p) => p.grade === g).length))
-  return GRADE_LEVELS.map((grade) => {
-    const count = plans.all.filter((p) => p.grade === grade).length
-    return { grade, count, share: Math.round((count / max) * 100) }
-  }).filter((row) => row.count > 0)
+const byQuarter = computed(() => {
+  const counts = [1, 2, 3, 4].map((q) => plans.all.filter((p) => p.quarter === q).length)
+  const max = Math.max(1, ...counts)
+  return [1, 2, 3, 4].map((quarter, i) => ({
+    quarter,
+    count: counts[i] ?? 0,
+    share: Math.round(((counts[i] ?? 0) / max) * 100),
+  }))
 })
 
 const byDomain = computed(() => {
   const counts = new Map<string, number>()
-  for (const plan of scoped.value) {
+  for (const plan of plans.all) {
     const domain = catalog.competencyById(plan.competencyId)?.domain ?? 'Unclassified'
     counts.set(domain, (counts.get(domain) ?? 0) + 1)
   }
@@ -91,21 +79,10 @@ const averageRegenerations = computed(() =>
 )
 
 function exportCsv() {
-  const header = [
-    'Title',
-    'Teacher',
-    'Grade',
-    'Quarter',
-    'MELC',
-    'Template',
-    'Duration',
-    'Status',
-    'Updated',
-  ]
-  const rows = scoped.value.map((plan) => [
+  const header = ['Title', 'Teacher', 'Quarter', 'MELC', 'Template', 'Duration', 'Status', 'Updated']
+  const rows = plans.all.map((plan) => [
     plan.title,
     users.byId(plan.ownerId)?.name ?? '',
-    plan.grade,
     `Q${plan.quarter}`,
     plan.competencyCode,
     plan.templateName,
@@ -130,18 +107,9 @@ function exportCsv() {
 <template>
   <PageHeader
     title="System reports"
-    description="Usage across teachers, grade levels and curriculum domains."
+    description="Grade 3 Mathematics planning activity across teachers, quarters and curriculum domains."
   >
     <template #actions>
-      <Select v-model="gradeFilter">
-        <SelectTrigger class="w-[10.5rem]">
-          <SelectValue placeholder="Grade level" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All grade levels</SelectItem>
-          <SelectItem v-for="g in GRADE_LEVELS" :key="g" :value="g">{{ g }}</SelectItem>
-        </SelectContent>
-      </Select>
       <Button variant="outline" @click="exportCsv">
         <Download />
         Export CSV
@@ -152,8 +120,8 @@ function exportCsv() {
   <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
     <StatCard
       label="Lesson plans"
-      :value="scoped.length"
-      :hint="gradeFilter === 'all' ? 'Across all grade levels' : gradeFilter"
+      :value="plans.totalPlans"
+      hint="Grade 3 Mathematics"
       :icon="FileText"
     />
     <StatCard
@@ -179,35 +147,35 @@ function exportCsv() {
   <div class="grid gap-6 lg:grid-cols-2">
     <Card>
       <CardHeader>
-        <CardTitle>Plans per grade level</CardTitle>
-        <CardDescription>Where planning activity is concentrated.</CardDescription>
+        <CardTitle>Plans per quarter</CardTitle>
+        <CardDescription>Where planning activity is concentrated in the school year.</CardDescription>
       </CardHeader>
       <CardContent class="space-y-4">
-        <EmptyState v-if="!byGrade.length" title="No plans yet" :icon="Activity" />
-        <div v-for="row in byGrade" :key="row.grade" class="space-y-1.5">
-          <div class="flex items-center justify-between text-sm">
-            <span>{{ row.grade }}</span>
-            <span class="text-muted-foreground tabular-nums">{{ row.count }}</span>
+        <EmptyState v-if="!plans.totalPlans" title="No plans yet" :icon="Activity" />
+        <template v-else>
+          <div v-for="row in byQuarter" :key="row.quarter" class="space-y-1.5">
+            <div class="flex items-center justify-between text-sm">
+              <span>Quarter {{ romanQuarter(row.quarter) }}</span>
+              <span class="text-muted-foreground tabular-nums">{{ row.count }}</span>
+            </div>
+            <div class="bg-muted h-2 w-full overflow-hidden rounded-full">
+              <div
+                class="bg-chart-1 h-full rounded-full transition-all"
+                :style="{ width: `${row.share}%` }"
+              />
+            </div>
           </div>
-          <div class="bg-muted h-2 w-full overflow-hidden rounded-full">
-            <div
-              class="bg-chart-1 h-full rounded-full transition-all"
-              :style="{ width: `${row.share}%` }"
-            />
-          </div>
-        </div>
+        </template>
       </CardContent>
     </Card>
 
     <Card>
       <CardHeader>
         <CardTitle>Plans per curriculum domain</CardTitle>
-        <CardDescription>
-          {{ gradeFilter === 'all' ? 'All grade levels' : gradeFilter }}
-        </CardDescription>
+        <CardDescription>Across the five Grade 3 Mathematics domains.</CardDescription>
       </CardHeader>
       <CardContent class="space-y-4">
-        <EmptyState v-if="!byDomain.length" title="No plans in this filter" :icon="Activity" />
+        <EmptyState v-if="!byDomain.length" title="No plans yet" :icon="Activity" />
         <div v-for="row in byDomain" :key="row.domain" class="space-y-1.5">
           <div class="flex items-center justify-between gap-3 text-sm">
             <span class="truncate">{{ row.domain }}</span>

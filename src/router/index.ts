@@ -106,8 +106,10 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
+  // Hold the first navigation until the Supabase session has been restored.
+  await auth.ensureReady()
 
   if (to.meta.public) {
     // A signed-in user landing on /login goes straight to their own workspace.

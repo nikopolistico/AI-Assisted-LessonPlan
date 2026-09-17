@@ -13,6 +13,7 @@ import {
   RefreshCw,
 } from 'lucide-vue-next'
 import EmptyState from '@/components/app/EmptyState.vue'
+import LessonPlanDocument from '@/components/app/LessonPlanDocument.vue'
 import PlanEditor from '@/components/app/PlanEditor.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -36,12 +37,15 @@ import {
 import type { LessonPlan, PlanStatus } from '@/types'
 import { usePlansStore } from '@/stores/plans'
 import { useCatalogStore } from '@/stores/catalog'
+import { useAuthStore } from '@/stores/auth'
 import { formatDateTime, romanQuarter } from '@/lib/format'
 import { planToText } from '@/lib/export'
+import { downloadElementAsPdf } from '@/lib/pdf'
 
 const route = useRoute()
 const plans = usePlansStore()
 const catalog = useCatalogStore()
+const auth = useAuthStore()
 
 const planId = computed(() => String(route.params.id))
 const plan = computed<LessonPlan | null>(() => plans.byId(planId.value))
@@ -52,6 +56,8 @@ const competency = computed(() =>
 const editing = ref(false)
 const savedAt = ref<string | null>(null)
 const confirmRegenerate = ref(false)
+const documentEl = ref<InstanceType<typeof LessonPlanDocument> | null>(null)
+const exportingPdf = ref(false)
 
 // Regenerating or navigating replaces the plan, so drop any open editor.
 watch(planId, () => {
@@ -64,16 +70,16 @@ const totalMinutes = computed(
 )
 const minutesOff = computed(() => (plan.value ? totalMinutes.value - plan.value.duration : 0))
 
-function applyEdits(patch: Partial<LessonPlan>) {
+async function applyEdits(patch: Partial<LessonPlan>) {
   if (!plan.value) return
-  plans.update(plan.value.id, patch)
+  await plans.update(plan.value.id, patch)
   savedAt.value = new Date().toISOString()
   editing.value = false
 }
 
-function setStatus(status: PlanStatus) {
+async function setStatus(status: PlanStatus) {
   if (!plan.value) return
-  plans.update(plan.value.id, { status })
+  await plans.update(plan.value.id, { status })
   savedAt.value = new Date().toISOString()
 }
 
@@ -87,6 +93,22 @@ async function regenerate() {
 
 function printPlan() {
   window.print()
+}
+
+async function downloadPdf() {
+  const current = plan.value
+  const el = documentEl.value?.$el as HTMLElement | undefined
+  if (!current || !el) return
+  const name = current.title
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase()
+  exportingPdf.value = true
+  try {
+    await downloadElementAsPdf(el, `${name}.pdf`)
+  } finally {
+    exportingPdf.value = false
+  }
 }
 
 function download(kind: 'txt' | 'md' | 'json') {
@@ -111,10 +133,14 @@ function download(kind: 'txt' | 'md' | 'json') {
 </script>
 
 <template>
+  <div v-if="!plan && plans.loading" class="text-muted-foreground py-16 text-center text-sm">
+    Loading lesson plan…
+  </div>
+
   <EmptyState
-    v-if="!plan"
+    v-else-if="!plan"
     title="Lesson plan not found"
-    description="It may have been deleted from this browser."
+    description="It may have been deleted, or it belongs to another teacher."
     :icon="FileText"
   >
     <Button as-child size="sm">
@@ -170,9 +196,14 @@ function download(kind: 'txt' | 'md' | 'json') {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" class="w-52">
+              <DropdownMenuItem :disabled="exportingPdf" @select="downloadPdf">
+                <Loader2 v-if="exportingPdf" class="animate-spin" />
+                <Download v-else />
+                Download PDF
+              </DropdownMenuItem>
               <DropdownMenuItem @select="printPlan">
                 <Printer />
-                Print / Save as PDF
+                Print
               </DropdownMenuItem>
               <DropdownMenuItem @select="download('txt')">
                 <FileText />
@@ -223,7 +254,7 @@ function download(kind: 'txt' | 'md' | 'json') {
     />
 
     <!-- Reader -->
-    <div v-else class="grid gap-6 lg:grid-cols-3">
+    <div v-else class="no-print grid gap-6 lg:grid-cols-3">
       <div class="space-y-6 lg:col-span-2">
         <Card class="print-plain">
           <CardHeader>
@@ -345,6 +376,17 @@ function download(kind: 'txt' | 'md' | 'json') {
           </CardContent>
         </Card>
       </div>
+    </div>
+
+    <!-- Print / PDF document: off-screen until an actual print or PDF export. -->
+    <div class="print-doc">
+      <LessonPlanDocument
+        ref="documentEl"
+        :plan="plan"
+        :competency="competency"
+        :teacher-name="auth.currentUser?.name ?? ''"
+        :school="auth.currentUser?.school ?? ''"
+      />
     </div>
 
     <Dialog v-model:open="confirmRegenerate">

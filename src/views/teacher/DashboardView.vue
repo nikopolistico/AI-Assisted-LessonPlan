@@ -26,13 +26,10 @@ const minutesPlanned = computed(() => myPlans.value.reduce((sum, p) => sum + p.d
 
 const firstName = computed(() => auth.currentUser?.name.split(' ')[0] ?? 'there')
 
-/** Competencies for the grades this teacher handles that have no plan yet. */
+/** Active competencies that this teacher has no plan for yet. */
 const suggestions = computed(() => {
   const covered = new Set(myPlans.value.map((p) => p.competencyId))
-  const grades = auth.currentUser?.gradeLevels ?? []
-  return catalog.activeCompetencies
-    .filter((c) => grades.includes(c.grade) && !covered.has(c.id))
-    .slice(0, 4)
+  return catalog.activeCompetencies.filter((c) => !covered.has(c.id)).slice(0, 4)
 })
 </script>
 
@@ -125,17 +122,13 @@ const suggestions = computed(() => {
     <Card>
       <CardHeader>
         <CardTitle>Not yet covered</CardTitle>
-        <CardDescription>
-          Competencies for
-          {{ (auth.currentUser?.gradeLevels ?? []).join(' and ') || 'your grade levels' }}
-          without a plan.
-        </CardDescription>
+        <CardDescription>Grade 3 Mathematics competencies without a plan yet.</CardDescription>
       </CardHeader>
       <CardContent class="space-y-3">
         <EmptyState
           v-if="!suggestions.length"
           title="All caught up"
-          description="Every active competency for your grade levels already has a plan."
+          description="Every active competency already has a plan."
         />
 
         <template v-else>

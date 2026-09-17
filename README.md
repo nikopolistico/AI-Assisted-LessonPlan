@@ -35,21 +35,21 @@ Stack: Vue 3 + TypeScript, Vite, Pinia, Vue Router, Tailwind CSS v4 and shadcn-v
 Routes are guarded by role: a teacher who opens an `/admin` URL is sent back to their own workspace,
 and signed-out visitors are redirected to `/login` with a return path.
 
-## Demo accounts
+## Accounts
 
-Password for every seeded account is `lessonplan`.
-
-- Teacher — `teacher@lessonplan.ph`
-- Admin — `admin@lessonplan.ph`
-
-The login screen lists both and fills the form when you click one.
+Authentication is Supabase Auth (email + password). Teachers register from the **Create an account**
+link on the sign-in screen and are active straight away (no approval step). Bootstrap the first
+administrator by creating an account, then running
+`select public.promote_to_admin('<email>');` in the Supabase SQL Editor (see below).
 
 ## Data
 
-There is no backend yet. Seed data lives in `src/data/seed.ts` and every change is persisted to
-`localStorage` through the Pinia stores in `src/stores/`. Generation is simulated in
-`src/lib/generator.ts`, which composes a plan from the selected template, MELC and lesson details —
-swap that module for a real API call and the screens do not change.
+Supabase is the single source of truth. The Pinia stores in `src/stores/` read and write the tables
+and RPCs defined in `supabase/` — `auth` uses Supabase Auth and `public.users`, `plans` calls
+`generate_lesson_plan` / `regenerate_lesson_plan`, `catalog` and `users` read reference data and
+account rows. Row/function types are in `src/lib/database.types.ts` and the snake_case ↔ camelCase
+mappers in `src/lib/mappers.ts`. Only UI preferences (theme, sidebar state) still use `localStorage`.
+`GRADE_LEVELS` and `DURATIONS` in `src/data/seed.ts` are static option lists.
 
 ## Project setup
 
@@ -66,29 +66,26 @@ Recommended editor setup: [VS Code](https://code.visualstudio.com/) with
 
 ## Supabase
 
-SQL lives in `supabase/`:
+All the SQL is one file:
 
-- `supabase/migrations/20260902120000_init.sql` — extensions, enums, tables, indexes, triggers,
-  auth wiring, Row Level Security policies and every RPC function
-- `supabase/seed.sql` — MELCs, lesson templates, section prompts and per-domain materials
+- `supabase/setup.sql` — drops every app object, then recreates the extensions, enums, tables,
+  indexes, triggers, auth wiring, Row Level Security policies, every RPC function, and the seed
+  data (MELCs, lesson templates, section prompts, per-domain materials). Safe to re-run.
 
 ### Apply it
 
-Either paste both files into the Supabase **SQL Editor** in that order, or use the CLI:
+Paste `supabase/setup.sql` into the Supabase **SQL Editor** and run it. In
+**Authentication → Sign In / Providers → Email**, keep **"Confirm email" on** so new accounts
+must click the confirmation link Supabase emails them before they can sign in.
 
-```sh
-npx supabase link --project-ref <your-project-ref>
-npx supabase db push          # applies supabase/migrations/
-npx supabase db reset         # local: migrations + seed.sql
-```
-
-Then create your first account under **Authentication → Users** and promote it:
+Then sign up through the app, confirm the address from the email Supabase sends, and promote
+your account:
 
 ```sql
 select public.promote_to_admin('admin@lessonplan.ph');
 ```
 
-New sign-ups land as `pending` teachers; an admin approves them from `/admin/users`.
+New sign-ups become active teachers as soon as they confirm their email.
 
 ### Connect the app
 
@@ -103,7 +100,7 @@ in `src/lib/database.types.ts`.
 
 | Table                   | Purpose                                                         |
 | ----------------------- | --------------------------------------------------------------- |
-| `profiles`              | One row per `auth.users` account: role, status, school, grades   |
+| `users`                 | One row per `auth.users` account: role, status, school, grades   |
 | `competencies`          | MELC catalogue (code, grade, quarter, domain, active)            |
 | `lesson_templates`      | Instructional models and their ordered sections                  |
 | `section_prompts`       | Prose the generator drops into each section (`{topic}` is substituted) |
@@ -154,5 +151,5 @@ const { data, error } = await supabase.rpc('generate_lesson_plan', {
 })
 ```
 
-> The Pinia stores still read and write `localStorage`; wiring them to these tables and RPCs is the
-> next step.
+The stores in `src/stores/` call these directly — `usePlansStore().generate()` wraps
+`generate_lesson_plan`, and so on.

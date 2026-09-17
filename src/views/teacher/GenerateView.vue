@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { AlertCircle, Clock, Loader2, Sparkles } from 'lucide-vue-next'
+import { AlertCircle, Clock, Loader2, Sparkles, Terminal } from 'lucide-vue-next'
 import PageHeader from '@/components/app/PageHeader.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -19,11 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { DURATIONS, GRADE_LEVELS } from '@/data/seed'
+import { DURATIONS } from '@/data/seed'
 import type { LessonRequest } from '@/types'
 import { useAuthStore } from '@/stores/auth'
 import { useCatalogStore } from '@/stores/catalog'
 import { usePlansStore } from '@/stores/plans'
+import { generatorModel } from '@/lib/openai'
 
 const route = useRoute()
 const router = useRouter()
@@ -34,7 +35,7 @@ const plans = usePlansStore()
 const form = reactive<LessonRequest>({
   topic: '',
   competencyId: '',
-  grade: auth.currentUser?.gradeLevels[0] ?? 'Grade 3',
+  grade: 'Grade 3',
   quarter: 1,
   duration: 60,
   templateId: catalog.defaultTemplate?.id ?? '',
@@ -67,19 +68,68 @@ watch(selectedCompetency, (competency) => {
   }
 })
 
+// Reference data loads asynchronously from Supabase, so preselect the default
+// template and apply any ?competency= preset once the catalogue has arrived.
+watch(
+  () => catalog.defaultTemplate?.id,
+  (id) => {
+    if (id && !form.templateId) form.templateId = id
+  },
+  { immediate: true },
+)
+
+watch(
+  () => catalog.competencies.length,
+  () => {
+    const preset = typeof route.query.competency === 'string' ? route.query.competency : null
+    const competency = preset ? catalog.competencyById(preset) : null
+    if (competency && form.competencyId !== competency.id) {
+      form.grade = competency.grade
+      form.quarter = competency.quarter
+      form.competencyId = competency.id
+    }
+  },
+  { immediate: true },
+)
+
 onMounted(() => {
-  const preset = typeof route.query.competency === 'string' ? route.query.competency : null
-  const competency = preset ? catalog.competencyById(preset) : null
-  if (competency) {
-    form.grade = competency.grade
-    form.quarter = competency.quarter
-    form.competencyId = competency.id
-  }
+  if (!catalog.competencies.length) void catalog.fetchAll()
 })
 
 const canGenerate = computed(() =>
   Boolean(form.competencyId && form.templateId && form.topic.trim() && !plans.generating),
 )
+
+// --- Typewriter view of the model's streamed output --------------------------
+const streamFull = ref('') // everything received from the model so far
+const streamShown = ref('') // the slice the typewriter has revealed
+const streamBox = ref<HTMLElement | null>(null)
+let typeTimer: number | undefined
+
+function stopTypewriter() {
+  if (typeTimer !== undefined) {
+    clearInterval(typeTimer)
+    typeTimer = undefined
+  }
+}
+
+function startTypewriter() {
+  stopTypewriter()
+  streamFull.value = ''
+  streamShown.value = ''
+  typeTimer = window.setInterval(() => {
+    if (streamShown.value.length >= streamFull.value.length) return
+    // Reveal faster when the model is far ahead, so it never lags too far behind.
+    const behind = streamFull.value.length - streamShown.value.length
+    const step = Math.max(2, Math.ceil(behind / 40))
+    streamShown.value = streamFull.value.slice(0, streamShown.value.length + step)
+    void nextTick(() => {
+      if (streamBox.value) streamBox.value.scrollTop = streamBox.value.scrollHeight
+    })
+  }, 16)
+}
+
+onBeforeUnmount(stopTypewriter)
 
 async function submit() {
   error.value = ''
@@ -92,11 +142,17 @@ async function submit() {
     error.value = 'Choose a lesson template.'
     return
   }
+  startTypewriter()
   try {
-    const plan = await plans.generate({ ...form }, auth.currentUser.id)
+    const plan = await plans.generate({ ...form }, auth.currentUser.id, (full) => {
+      streamFull.value = full
+    })
+    streamShown.value = streamFull.value // show the tail before we leave
     router.push(`/teacher/plans/${plan.id}`)
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Generation failed. Try again.'
+  } finally {
+    stopTypewriter()
   }
 }
 </script>
@@ -120,16 +176,12 @@ async function submit() {
           <div class="grid gap-4 sm:grid-cols-2">
             <div class="space-y-2">
               <Label for="grade">Grade level</Label>
-              <Select v-model="form.grade">
-                <SelectTrigger id="grade">
-                  <SelectValue placeholder="Select grade level" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem v-for="grade in GRADE_LEVELS" :key="grade" :value="grade">
-                    {{ grade }}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              <div
+                id="grade"
+                class="border-input bg-muted/40 text-muted-foreground flex h-9 items-center rounded-md border px-3 text-sm"
+              >
+                {{ form.grade }}
+              </div>
             </div>
 
             <div class="space-y-2">
@@ -271,6 +323,32 @@ async function submit() {
 
     <!-- Live summary -->
     <div class="space-y-6">
+      <!-- The model's output, streamed in as it is generated -->
+      <Card v-if="plans.generating || streamShown">
+        <CardHeader>
+          <CardTitle class="flex items-center gap-2 text-base">
+            <Terminal class="size-4" />
+            {{ plans.generating ? 'Generating…' : 'Model output' }}
+          </CardTitle>
+          <CardDescription>
+            Model: <span class="font-mono text-xs">{{ generatorModel }}</span>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div
+            ref="streamBox"
+            class="bg-muted/50 text-foreground/80 max-h-80 overflow-y-auto rounded-md p-3 text-sm leading-relaxed break-words whitespace-pre-wrap"
+          >{{ streamShown
+            }}<span
+              v-if="plans.generating"
+              class="bg-primary ml-0.5 inline-block h-4 w-[3px] translate-y-1 animate-pulse"
+            /><span v-if="plans.generating && !streamShown" class="text-muted-foreground"
+              >Waiting for the model…</span
+            >
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle class="text-base">Plan summary</CardTitle>

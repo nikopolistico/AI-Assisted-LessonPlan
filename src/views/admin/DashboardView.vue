@@ -44,6 +44,14 @@ const templateUse = computed(() => {
 function ownerName(id: string) {
   return users.byId(id)?.name ?? 'Unknown teacher'
 }
+
+async function approve(id: string) {
+  try {
+    await users.setStatus(id, 'active')
+  } catch {
+    // no-op — the pending list stays as-is on failure
+  }
+}
 </script>
 
 <template>
@@ -116,7 +124,7 @@ function ownerName(id: string) {
                 Registered {{ formatDate(user.createdAt) }}
               </p>
             </div>
-            <Button size="sm" @click="users.setStatus(user.id, 'active')">Approve</Button>
+            <Button size="sm" @click="approve(user.id)">Approve</Button>
           </div>
           <Button variant="link" size="sm" class="h-auto p-0" as-child>
             <RouterLink to="/admin/users">Manage all accounts</RouterLink>

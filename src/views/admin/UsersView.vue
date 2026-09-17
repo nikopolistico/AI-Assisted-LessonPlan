@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { Ban, Check, MoreHorizontal, Pencil, Plus, Search, Trash2, Users } from 'lucide-vue-next'
+import { Ban, Check, MoreHorizontal, Pencil, Search, Trash2, Users } from 'lucide-vue-next'
 import PageHeader from '@/components/app/PageHeader.vue'
 import EmptyState from '@/components/app/EmptyState.vue'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -74,10 +74,13 @@ const statusVariant: Record<UserStatus, 'success' | 'warning' | 'outline'> = {
   disabled: 'outline',
 }
 
-// --- Create / edit ---------------------------------------------------------
+// --- Edit -----------------------------------------------------------------
+// New accounts are created through the sign-up form on the login screen (they
+// need a Supabase Auth user); admins edit roles and status here.
 const dialogOpen = ref(false)
 const editingId = ref<string | null>(null)
 const formError = ref('')
+const saving = ref(false)
 
 const form = reactive({
   name: '',
@@ -87,20 +90,6 @@ const form = reactive({
   school: '',
   gradeLevels: [] as string[],
 })
-
-function openCreate() {
-  editingId.value = null
-  formError.value = ''
-  Object.assign(form, {
-    name: '',
-    email: '',
-    role: 'teacher' as Role,
-    status: 'active' as UserStatus,
-    school: '',
-    gradeLevels: [],
-  })
-  dialogOpen.value = true
-}
 
 function openEdit(user: User) {
   editingId.value = user.id
@@ -124,40 +113,49 @@ function toggleGrade(grade: string, checked: boolean) {
   }
 }
 
-function submit() {
+async function submit() {
+  if (!editingId.value) return
   formError.value = ''
-  if (!form.name.trim() || !form.email.trim()) {
-    formError.value = 'Name and email are required.'
-    return
-  }
-  const clash = users.all.find(
-    (u) => u.email.toLowerCase() === form.email.trim().toLowerCase() && u.id !== editingId.value,
-  )
-  if (clash) {
-    formError.value = 'Another account already uses that email address.'
+  if (!form.name.trim()) {
+    formError.value = 'Name is required.'
     return
   }
 
-  const payload = {
-    name: form.name.trim(),
-    email: form.email.trim(),
-    role: form.role,
-    status: form.status,
-    school: form.school.trim(),
-    gradeLevels: form.role === 'admin' ? [] : [...form.gradeLevels],
+  const original = users.byId(editingId.value)
+  saving.value = true
+  try {
+    await users.update(editingId.value, {
+      name: form.name.trim(),
+      school: form.school.trim(),
+      gradeLevels: form.role === 'admin' ? [] : [...form.gradeLevels],
+    })
+    if (original && form.role !== original.role) {
+      await users.setRole(editingId.value, form.role)
+    }
+    if (original && form.status !== original.status) {
+      await users.setStatus(editingId.value, form.status)
+    }
+    dialogOpen.value = false
+  } catch (e) {
+    formError.value = e instanceof Error ? e.message : 'Could not save the account.'
+  } finally {
+    saving.value = false
   }
+}
 
-  if (editingId.value) users.update(editingId.value, payload)
-  else users.create(payload)
-
-  dialogOpen.value = false
+async function setStatus(id: string, status: UserStatus) {
+  try {
+    await users.setStatus(id, status)
+  } catch {
+    // no-op — the row keeps its previous status
+  }
 }
 
 // --- Delete ----------------------------------------------------------------
 const pendingDelete = ref<User | null>(null)
 
-function confirmDelete() {
-  if (pendingDelete.value) users.remove(pendingDelete.value.id)
+async function confirmDelete() {
+  if (pendingDelete.value) await users.remove(pendingDelete.value.id)
   pendingDelete.value = null
 }
 </script>
@@ -165,15 +163,8 @@ function confirmDelete() {
 <template>
   <PageHeader
     title="User accounts"
-    description="Register teachers, approve pending sign-ups and set role-based access."
-  >
-    <template #actions>
-      <Button @click="openCreate">
-        <Plus />
-        Add account
-      </Button>
-    </template>
-  </PageHeader>
+    description="Set role-based access and manage teacher accounts. New accounts register from the sign-in screen and are active immediately."
+  />
 
   <Card class="gap-0 py-0">
     <CardContent class="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center">
@@ -281,14 +272,14 @@ function confirmDelete() {
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     v-if="user.status !== 'active'"
-                    @select="users.setStatus(user.id, 'active')"
+                    @select="setStatus(user.id, 'active')"
                   >
                     <Check />
                     {{ user.status === 'pending' ? 'Approve' : 'Re-enable' }}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     v-if="user.status === 'active' && user.id !== auth.userId"
-                    @select="users.setStatus(user.id, 'disabled')"
+                    @select="setStatus(user.id, 'disabled')"
                   >
                     <Ban />
                     Disable access
@@ -316,11 +307,11 @@ function confirmDelete() {
     </CardContent>
   </Card>
 
-  <!-- Create / edit dialog -->
+  <!-- Edit dialog -->
   <Dialog v-model:open="dialogOpen">
     <DialogContent class="sm:max-w-lg">
       <DialogHeader>
-        <DialogTitle>{{ editingId ? 'Edit account' : 'Add account' }}</DialogTitle>
+        <DialogTitle>Edit account</DialogTitle>
         <DialogDescription>
           Teachers can generate and manage their own lesson plans. Admins manage curriculum data and
           accounts.
@@ -335,12 +326,7 @@ function confirmDelete() {
           </div>
           <div class="space-y-2">
             <Label for="u-email">Email</Label>
-            <Input
-              id="u-email"
-              v-model="form.email"
-              type="email"
-              placeholder="name@lessonplan.ph"
-            />
+            <Input id="u-email" v-model="form.email" type="email" disabled readonly />
           </div>
         </div>
 
@@ -402,7 +388,7 @@ function confirmDelete() {
 
         <DialogFooter>
           <Button type="button" variant="outline" @click="dialogOpen = false">Cancel</Button>
-          <Button type="submit">{{ editingId ? 'Save changes' : 'Create account' }}</Button>
+          <Button type="submit" :disabled="saving">Save changes</Button>
         </DialogFooter>
       </form>
     </DialogContent>

@@ -1,7 +1,7 @@
 /**
- * Types for the Supabase schema in `supabase/migrations/`.
+ * Types for the Supabase schema in `supabase/setup.sql`.
  *
- * Hand-written to match that migration. Once the project is live you can
+ * Hand-written to match that file. Once the project is live you can
  * regenerate them instead:
  *   npx supabase gen types typescript --project-id <ref> > src/lib/database.types.ts
  */
@@ -10,14 +10,14 @@ export type AppRole = 'teacher' | 'admin'
 export type AccountStatus = 'active' | 'pending' | 'disabled'
 export type PlanStatus = 'draft' | 'final'
 
-export interface PlanSectionRow {
+export type PlanSectionRow = {
   key: string
   title: string
   minutes: number
   body: string
 }
 
-export interface ProfileRow {
+export type UserRow = {
   id: string
   full_name: string
   email: string
@@ -30,7 +30,7 @@ export interface ProfileRow {
   updated_at: string
 }
 
-export interface CompetencyRow {
+export type CompetencyRow = {
   id: string
   code: string
   grade: string
@@ -42,7 +42,7 @@ export interface CompetencyRow {
   updated_at: string
 }
 
-export interface LessonTemplateRow {
+export type LessonTemplateRow = {
   id: string
   name: string
   approach: string
@@ -55,7 +55,7 @@ export interface LessonTemplateRow {
   updated_at: string
 }
 
-export interface LessonPlanRow {
+export type LessonPlanRow = {
   id: string
   owner_id: string
   title: string
@@ -79,7 +79,7 @@ export interface LessonPlanRow {
   updated_at: string
 }
 
-export interface LessonPlanRevisionRow {
+export type LessonPlanRevisionRow = {
   id: string
   plan_id: string
   revision: number
@@ -88,13 +88,13 @@ export interface LessonPlanRevisionRow {
   created_at: string
 }
 
-export interface SectionPromptRow {
+export type SectionPromptRow = {
   key: string
   body: string
   updated_at: string
 }
 
-export interface DomainMaterialRow {
+export type DomainMaterialRow = {
   domain: string
   materials: string[]
   updated_at: string
@@ -107,10 +107,10 @@ type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Relationships: []
 }
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
-      profiles: Table<ProfileRow, Omit<ProfileRow, 'created_at' | 'updated_at'>>
+      users: Table<UserRow, Omit<UserRow, 'created_at' | 'updated_at'>>
       competencies: Table<CompetencyRow, Omit<CompetencyRow, 'id' | 'created_at' | 'updated_at'>>
       lesson_templates: Table<
         LessonTemplateRow,
@@ -169,9 +169,9 @@ export interface Database {
       my_uncovered_competencies: { Args: { p_limit?: number }; Returns: CompetencyRow[] }
       record_login: { Args: Record<string, never>; Returns: undefined }
 
-      set_user_status: { Args: { p_user_id: string; p_status: AccountStatus }; Returns: ProfileRow }
-      set_user_role: { Args: { p_user_id: string; p_role: AppRole }; Returns: ProfileRow }
-      approve_user: { Args: { p_user_id: string }; Returns: ProfileRow }
+      set_user_status: { Args: { p_user_id: string; p_status: AccountStatus }; Returns: UserRow }
+      set_user_role: { Args: { p_user_id: string; p_role: AppRole }; Returns: UserRow }
+      approve_user: { Args: { p_user_id: string }; Returns: UserRow }
       set_default_template: { Args: { p_template_id: string }; Returns: LessonTemplateRow }
       increment_template_usage: { Args: { p_template_id: string }; Returns: undefined }
       import_competencies: { Args: { p_rows: unknown }; Returns: number }

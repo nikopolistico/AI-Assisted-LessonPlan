@@ -1,50 +1,90 @@
 -- =============================================================================
--- Lesson Plan AI — Supabase schema
+-- Lesson Plan AI — full database setup (schema + functions + RLS + seed data)
 --
--- Run this once against a fresh Supabase project (SQL Editor, or
--- `supabase db reset` with the file under supabase/migrations/). It is written
--- to be re-runnable: every object is created with `if not exists` or replaced.
+-- ONE file. Run it in the Supabase SQL Editor (or `supabase db reset` after
+-- placing it under supabase/migrations/). It drops every app object first, so it
+-- is safe to re-run and always leaves the database in a known state.
+--
+-- Accounts still come from Supabase Auth. After the first sign-up:
+--   select public.promote_to_admin('you@example.com');
+--
+-- Keep "Confirm email" ON in Authentication -> Sign In / Providers -> Email so
+-- new accounts must click the link Supabase emails them before they can sign
+-- in (src/stores/auth.ts and LoginView.vue already handle both states).
 --
 -- Contents
+--   0. Clean slate
 --   1. Extensions and enums
 --   2. Tables
 --   3. Indexes
---   4. Shared triggers (updated_at, single default template, role guard)
---   5. Auth wiring (auth.users -> public.profiles)
---   6. Row Level Security policies
+--   4. Shared triggers
+--   5. Auth wiring (auth.users -> public.users)
+--   6. Row Level Security
 --   7. Functions — generation
 --   8. Functions — teacher actions
 --   9. Functions — admin actions
 --  10. Functions — system reports
 --  11. Grants
+--  12. Seed data (section prose, domain materials, templates, Grade 3 MELCs)
+--  13. First-time setup helpers
 -- =============================================================================
 
--- 1. Extensions and enums ----------------------------------------------------
+
+-- 0. Clean slate -----------------------------------------------------------------
+
+drop trigger if exists on_auth_user_created on auth.users;
+
+drop table if exists
+  public.lesson_plan_revisions,
+  public.lesson_plans,
+  public.domain_materials,
+  public.section_prompts,
+  public.lesson_templates,
+  public.competencies,
+  public.users,
+  public.profiles
+cascade;
+
+do $$
+declare
+  fn record;
+begin
+  for fn in
+    select p.oid::regprocedure as sig
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+  loop
+    execute format('drop function if exists %s cascade', fn.sig);
+  end loop;
+end $$;
+
+drop type if exists
+  public.plan_status,
+  public.account_status,
+  public.app_role
+cascade;
+
+
+-- 1. Extensions and enums -------------------------------------------------------
 
 create extension if not exists "pgcrypto" with schema extensions;
 
-do $$ begin
-  create type public.app_role as enum ('teacher', 'admin');
-exception when duplicate_object then null; end $$;
-
-do $$ begin
-  create type public.account_status as enum ('active', 'pending', 'disabled');
-exception when duplicate_object then null; end $$;
-
-do $$ begin
-  create type public.plan_status as enum ('draft', 'final');
-exception when duplicate_object then null; end $$;
+create type public.app_role       as enum ('teacher', 'admin');
+create type public.account_status as enum ('active', 'pending', 'disabled');
+create type public.plan_status    as enum ('draft', 'final');
 
 
--- 2. Tables ------------------------------------------------------------------
+-- 2. Tables -------------------------------------------------------------------
 
--- Mirrors auth.users with the application profile. One row per account.
-create table if not exists public.profiles (
+-- One row per account, keyed to the Supabase Auth user. This is the users table
+-- the app reads and writes; auth.users only holds the credentials.
+create table public.users (
   id           uuid primary key references auth.users (id) on delete cascade,
   full_name    text                     not null default '',
   email        text                     not null,
   role         public.app_role          not null default 'teacher',
-  status       public.account_status    not null default 'pending',
+  status       public.account_status    not null default 'active',
   school       text                     not null default '',
   grade_levels text[]                   not null default '{}',
   last_login   timestamptz,
@@ -52,11 +92,11 @@ create table if not exists public.profiles (
   updated_at   timestamptz              not null default now()
 );
 
-comment on table public.profiles is
-  'Application profile for every auth user. Role drives access: teacher or admin.';
+comment on table public.users is
+  'Application account for every auth user. Role drives access: teacher or admin.';
 
 -- The DepEd Most Essential Learning Competencies teachers plan against.
-create table if not exists public.competencies (
+create table public.competencies (
   id          uuid primary key default extensions.gen_random_uuid(),
   code        text        not null unique,
   grade       text        not null,
@@ -75,7 +115,7 @@ comment on table public.competencies is
   'MELC catalogue maintained by admins and consumed by the lesson generator.';
 
 -- Instructional models (4As, 7Es, ...) a plan can be generated against.
-create table if not exists public.lesson_templates (
+create table public.lesson_templates (
   id          uuid primary key default extensions.gen_random_uuid(),
   name        text        not null unique,
   approach    text        not null default 'Custom',
@@ -89,7 +129,7 @@ create table if not exists public.lesson_templates (
 );
 
 -- Boilerplate the generator drops into each section, keyed by lowercase title.
-create table if not exists public.section_prompts (
+create table public.section_prompts (
   key        text primary key,
   body       text        not null,
   updated_at timestamptz not null default now()
@@ -99,15 +139,15 @@ comment on table public.section_prompts is
   'Per-section prose used by build_plan_sections. {topic} is substituted at generation time.';
 
 -- Default learning resources suggested per curriculum domain.
-create table if not exists public.domain_materials (
+create table public.domain_materials (
   domain     text primary key,
   materials  text[]      not null default '{}',
   updated_at timestamptz not null default now()
 );
 
-create table if not exists public.lesson_plans (
+create table public.lesson_plans (
   id               uuid primary key default extensions.gen_random_uuid(),
-  owner_id         uuid        not null references public.profiles (id) on delete cascade,
+  owner_id         uuid        not null references public.users (id) on delete cascade,
   title            text        not null,
   topic            text        not null,
   competency_id    uuid        references public.competencies (id) on delete set null,
@@ -135,12 +175,12 @@ comment on table public.lesson_plans is
   'Generated lesson plans. Teachers own their rows; admins read all of them for reporting.';
 
 -- Snapshot taken before each regeneration so nothing is lost.
-create table if not exists public.lesson_plan_revisions (
+create table public.lesson_plan_revisions (
   id            uuid primary key default extensions.gen_random_uuid(),
   plan_id       uuid        not null references public.lesson_plans (id) on delete cascade,
   revision      integer     not null,
   snapshot      jsonb       not null,
-  created_by    uuid        references public.profiles (id) on delete set null,
+  created_by    uuid        references public.users (id) on delete set null,
   created_at    timestamptz not null default now(),
   unique (plan_id, revision)
 );
@@ -148,25 +188,25 @@ create table if not exists public.lesson_plan_revisions (
 
 -- 3. Indexes -----------------------------------------------------------------
 
-create index if not exists competencies_grade_quarter_idx
+create index competencies_grade_quarter_idx
   on public.competencies (grade, quarter) where active;
-create index if not exists competencies_domain_idx
+create index competencies_domain_idx
   on public.competencies (domain);
 
-create index if not exists lesson_plans_owner_idx
+create index lesson_plans_owner_idx
   on public.lesson_plans (owner_id, updated_at desc);
-create index if not exists lesson_plans_competency_idx
+create index lesson_plans_competency_idx
   on public.lesson_plans (competency_id);
-create index if not exists lesson_plans_grade_idx
+create index lesson_plans_grade_idx
   on public.lesson_plans (grade);
-create index if not exists lesson_plans_status_idx
+create index lesson_plans_status_idx
   on public.lesson_plans (status);
 
-create index if not exists lesson_plan_revisions_plan_idx
+create index lesson_plan_revisions_plan_idx
   on public.lesson_plan_revisions (plan_id, revision desc);
 
-create index if not exists profiles_role_idx on public.profiles (role);
-create index if not exists profiles_status_idx on public.profiles (status);
+create index users_role_idx   on public.users (role);
+create index users_status_idx on public.users (status);
 
 
 -- 4. Shared triggers ---------------------------------------------------------
@@ -186,9 +226,8 @@ declare
   t text;
 begin
   foreach t in array array[
-    'profiles', 'competencies', 'lesson_templates', 'lesson_plans'
+    'users', 'competencies', 'lesson_templates', 'lesson_plans'
   ] loop
-    execute format('drop trigger if exists set_updated_at on public.%I', t);
     execute format(
       'create trigger set_updated_at before update on public.%I
          for each row execute function public.touch_updated_at()', t);
@@ -210,20 +249,23 @@ begin
 end;
 $$;
 
-drop trigger if exists single_default_template on public.lesson_templates;
 create trigger single_default_template
   before insert or update of is_default on public.lesson_templates
   for each row when (new.is_default)
   execute function public.enforce_single_default_template();
 
--- A teacher may edit their own profile, but never their own role or status.
-create or replace function public.guard_profile_privileges()
+-- A teacher may edit their own account, but never their own role or status.
+create or replace function public.guard_user_privileges()
 returns trigger
 language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
 begin
+  -- No JWT (SQL Editor, service role, `supabase db` CLI): trusted, allow it.
+  if auth.uid() is null then
+    return new;
+  end if;
   if public.is_admin() then
     return new;
   end if;
@@ -239,10 +281,9 @@ begin
 end;
 $$;
 
-drop trigger if exists guard_profile_privileges on public.profiles;
-create trigger guard_profile_privileges
-  before update on public.profiles
-  for each row execute function public.guard_profile_privileges();
+create trigger guard_user_privileges
+  before update on public.users
+  for each row execute function public.guard_user_privileges();
 
 -- Count a template use whenever a plan is generated from it.
 create or replace function public.bump_template_usage()
@@ -272,7 +313,6 @@ as $$
    where id = p_template_id;
 $$;
 
-drop trigger if exists bump_template_usage on public.lesson_plans;
 create trigger bump_template_usage
   after insert on public.lesson_plans
   for each row execute function public.bump_template_usage();
@@ -280,8 +320,10 @@ create trigger bump_template_usage
 
 -- 5. Auth wiring -------------------------------------------------------------
 
--- New sign-ups land as pending teachers until an admin approves them. Pass
--- full_name / school / role in the sign-up metadata to prefill the profile.
+-- New sign-ups become active teachers straight away, so a teacher can use the
+-- app as soon as they have signed up. Pass full_name / school / role in the
+-- sign-up metadata to prefill the account. To bring back admin approval, change
+-- 'active' to 'pending' and re-add the pending check in src/stores/auth.ts.
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -289,21 +331,20 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
-  insert into public.profiles (id, email, full_name, school, role, status)
+  insert into public.users (id, email, full_name, school, role, status)
   values (
     new.id,
     coalesce(new.email, ''),
     coalesce(new.raw_user_meta_data ->> 'full_name', split_part(new.email, '@', 1)),
     coalesce(new.raw_user_meta_data ->> 'school', ''),
     coalesce((new.raw_user_meta_data ->> 'role')::public.app_role, 'teacher'),
-    'pending'
+    'active'
   )
   on conflict (id) do nothing;
   return new;
 end;
 $$;
 
-drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
@@ -311,7 +352,7 @@ create trigger on_auth_user_created
 
 -- 6. Row Level Security ------------------------------------------------------
 
--- Security definer so profile policies can call it without recursing into RLS.
+-- Security definer so account policies can call it without recursing into RLS.
 create or replace function public.is_admin(p_uid uuid default auth.uid())
 returns boolean
 language sql
@@ -320,7 +361,7 @@ security definer
 set search_path = public, pg_temp
 as $$
   select exists (
-    select 1 from public.profiles
+    select 1 from public.users
      where id = p_uid and role = 'admin' and status = 'active'
   );
 $$;
@@ -333,11 +374,11 @@ security definer
 set search_path = public, pg_temp
 as $$
   select exists (
-    select 1 from public.profiles where id = p_uid and status = 'active'
+    select 1 from public.users where id = p_uid and status = 'active'
   );
 $$;
 
-alter table public.profiles              enable row level security;
+alter table public.users                 enable row level security;
 alter table public.competencies          enable row level security;
 alter table public.lesson_templates      enable row level security;
 alter table public.section_prompts       enable row level security;
@@ -345,25 +386,21 @@ alter table public.domain_materials      enable row level security;
 alter table public.lesson_plans          enable row level security;
 alter table public.lesson_plan_revisions enable row level security;
 
--- profiles -------------------------------------------------------------------
-drop policy if exists profiles_select on public.profiles;
-create policy profiles_select on public.profiles
+-- users ---------------------------------------------------------------------
+create policy users_select on public.users
   for select to authenticated
   using (id = auth.uid() or public.is_admin());
 
-drop policy if exists profiles_insert on public.profiles;
-create policy profiles_insert on public.profiles
+create policy users_insert on public.users
   for insert to authenticated
   with check (public.is_admin());
 
-drop policy if exists profiles_update on public.profiles;
-create policy profiles_update on public.profiles
+create policy users_update on public.users
   for update to authenticated
   using (id = auth.uid() or public.is_admin())
   with check (id = auth.uid() or public.is_admin());
 
-drop policy if exists profiles_delete on public.profiles;
-create policy profiles_delete on public.profiles
+create policy users_delete on public.users
   for delete to authenticated
   using (public.is_admin() and id <> auth.uid());
 
@@ -374,12 +411,9 @@ declare
 begin
   foreach t in array array['competencies', 'lesson_templates', 'section_prompts', 'domain_materials']
   loop
-    execute format('drop policy if exists %I on public.%I', t || '_select', t);
     execute format(
       'create policy %I on public.%I for select to authenticated using (true)',
       t || '_select', t);
-
-    execute format('drop policy if exists %I on public.%I', t || '_write', t);
     execute format(
       'create policy %I on public.%I for all to authenticated
          using (public.is_admin()) with check (public.is_admin())',
@@ -388,29 +422,24 @@ begin
 end $$;
 
 -- lesson_plans ---------------------------------------------------------------
-drop policy if exists lesson_plans_select on public.lesson_plans;
 create policy lesson_plans_select on public.lesson_plans
   for select to authenticated
   using (owner_id = auth.uid() or public.is_admin());
 
-drop policy if exists lesson_plans_insert on public.lesson_plans;
 create policy lesson_plans_insert on public.lesson_plans
   for insert to authenticated
   with check (owner_id = auth.uid() and public.is_active());
 
-drop policy if exists lesson_plans_update on public.lesson_plans;
 create policy lesson_plans_update on public.lesson_plans
   for update to authenticated
   using (owner_id = auth.uid())
   with check (owner_id = auth.uid());
 
-drop policy if exists lesson_plans_delete on public.lesson_plans;
 create policy lesson_plans_delete on public.lesson_plans
   for delete to authenticated
   using (owner_id = auth.uid() or public.is_admin());
 
--- lesson_plan_revisions ------------------------------------------------------
-drop policy if exists lesson_plan_revisions_select on public.lesson_plan_revisions;
+-- lesson_plan_revisions ----------------------------------------------------
 create policy lesson_plan_revisions_select on public.lesson_plan_revisions
   for select to authenticated
   using (
@@ -421,7 +450,6 @@ create policy lesson_plan_revisions_select on public.lesson_plan_revisions
     )
   );
 
-drop policy if exists lesson_plan_revisions_insert on public.lesson_plan_revisions;
 create policy lesson_plan_revisions_insert on public.lesson_plan_revisions
   for insert to authenticated
   with check (
@@ -702,9 +730,9 @@ set search_path = public, pg_temp
 as $$
   select c.*
     from public.competencies c
-    join public.profiles p on p.id = auth.uid()
+    join public.users u on u.id = auth.uid()
    where c.active
-     and c.grade = any (p.grade_levels)
+     and c.grade = any (u.grade_levels)
      and not exists (
        select 1 from public.lesson_plans lp
         where lp.owner_id = auth.uid() and lp.competency_id = c.id
@@ -734,55 +762,55 @@ create or replace function public.set_user_status(
   p_user_id uuid,
   p_status  public.account_status
 )
-returns public.profiles
+returns public.users
 language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
 declare
-  v_profile public.profiles;
+  v_user public.users;
 begin
   perform public.assert_admin();
   if p_user_id = auth.uid() and p_status <> 'active' then
     raise exception 'You cannot disable your own account.' using errcode = 'check_violation';
   end if;
 
-  update public.profiles set status = p_status where id = p_user_id
-  returning * into v_profile;
+  update public.users set status = p_status where id = p_user_id
+  returning * into v_user;
 
   if not found then
     raise exception 'Account not found.' using errcode = 'no_data_found';
   end if;
-  return v_profile;
+  return v_user;
 end;
 $$;
 
 create or replace function public.set_user_role(p_user_id uuid, p_role public.app_role)
-returns public.profiles
+returns public.users
 language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
 declare
-  v_profile public.profiles;
+  v_user public.users;
 begin
   perform public.assert_admin();
   if p_user_id = auth.uid() and p_role <> 'admin' then
     raise exception 'You cannot remove your own administrator role.' using errcode = 'check_violation';
   end if;
 
-  update public.profiles set role = p_role where id = p_user_id
-  returning * into v_profile;
+  update public.users set role = p_role where id = p_user_id
+  returning * into v_user;
 
   if not found then
     raise exception 'Account not found.' using errcode = 'no_data_found';
   end if;
-  return v_profile;
+  return v_user;
 end;
 $$;
 
 create or replace function public.approve_user(p_user_id uuid)
-returns public.profiles
+returns public.users
 language plpgsql
 security definer
 set search_path = public, pg_temp
@@ -855,15 +883,15 @@ comment on function public.import_competencies is
 
 create or replace function public.report_overview()
 returns table (
-  total_accounts     bigint,
-  active_accounts    bigint,
-  pending_accounts   bigint,
-  teachers           bigint,
-  competencies_total bigint,
+  total_accounts      bigint,
+  active_accounts     bigint,
+  pending_accounts    bigint,
+  teachers            bigint,
+  competencies_total  bigint,
   competencies_active bigint,
-  templates_active   bigint,
-  total_plans        bigint,
-  total_generations  bigint
+  templates_active    bigint,
+  total_plans         bigint,
+  total_generations   bigint
 )
 language plpgsql
 stable
@@ -874,10 +902,10 @@ begin
   perform public.assert_admin();
   return query
   select
-    (select count(*) from public.profiles),
-    (select count(*) from public.profiles where status = 'active'),
-    (select count(*) from public.profiles where status = 'pending'),
-    (select count(*) from public.profiles where role = 'teacher'),
+    (select count(*) from public.users),
+    (select count(*) from public.users where status = 'active'),
+    (select count(*) from public.users where status = 'pending'),
+    (select count(*) from public.users where role = 'teacher'),
     (select count(*) from public.competencies),
     (select count(*) from public.competencies where active),
     (select count(*) from public.lesson_templates where active),
@@ -949,20 +977,20 @@ begin
   perform public.assert_admin();
   return query
   select
-    p.id,
-    p.full_name,
-    p.school,
-    p.status,
+    u.id,
+    u.full_name,
+    u.school,
+    u.status,
     count(lp.id),
     count(lp.id) filter (where lp.status = 'final'),
     coalesce(sum(lp.generation_count), 0),
     coalesce(sum(lp.duration_minutes), 0),
-    p.last_login
-  from public.profiles p
-  left join public.lesson_plans lp on lp.owner_id = p.id
-  where p.role = 'teacher'
-  group by p.id
-  order by count(lp.id) desc, p.full_name;
+    u.last_login
+  from public.users u
+  left join public.lesson_plans lp on lp.owner_id = u.id
+  where u.role = 'teacher'
+  group by u.id
+  order by count(lp.id) desc, u.full_name;
 end;
 $$;
 
@@ -1025,7 +1053,7 @@ returns void
 language sql
 set search_path = public, pg_temp
 as $$
-  update public.profiles set last_login = now() where id = auth.uid();
+  update public.users set last_login = now() where id = auth.uid();
 $$;
 
 
@@ -1035,7 +1063,7 @@ grant usage on schema public to anon, authenticated;
 
 grant select, insert, update, delete on public.lesson_plans          to authenticated;
 grant select, insert                 on public.lesson_plan_revisions to authenticated;
-grant select, insert, update, delete on public.profiles              to authenticated;
+grant select, insert, update, delete on public.users                 to authenticated;
 grant select, insert, update, delete on public.competencies          to authenticated;
 grant select, insert, update, delete on public.lesson_templates      to authenticated;
 grant select, insert, update, delete on public.section_prompts       to authenticated;
@@ -1070,5 +1098,175 @@ grant execute on function
   public.report_template_usage()
 to authenticated;
 
--- assert_admin() only raises or returns void, so granting it is safe; it is the
--- guard clause inside the security-invoker admin functions above.
+
+-- 12. Seed data -------------------------------------------------------------
+
+-- Section prose used by build_plan_sections(). Keys are lowercase section titles.
+insert into public.section_prompts (key, body) values
+  ('activity',
+   'Open with a hands-on group task on {topic}. Learners work in fours with the prepared materials while you move around and note the strategies they try.'),
+  ('analysis',
+   'Draw out the thinking behind the activity: What did your group notice about {topic}? Which step gave you difficulty, and why? Chart the responses on the board.'),
+  ('abstraction',
+   'Formalise the concept. State the rule for {topic} in the learners'' own words first, then in mathematical language, and model three worked examples of increasing difficulty.'),
+  ('application',
+   'Learners apply {topic} to a real-life situation drawn from the community, then explain their solution to a seatmate before writing it down.'),
+  ('elicit',
+   'Two-minute drill on the prerequisite skill for {topic} to surface what learners already carry into the lesson.'),
+  ('engage',
+   'Present a short situation or puzzle about {topic} that has no obvious answer, and let learners predict before any instruction begins.'),
+  ('explore',
+   'Groups investigate {topic} with the manipulatives provided, recording what they observe on a shared table. Circulate and ask probing questions instead of giving answers.'),
+  ('explain',
+   'Groups report their findings. Guide the class from their observations to the formal statement of {topic}, correcting misconceptions as they surface.'),
+  ('elaborate',
+   'Extend {topic} to a less familiar case, including one problem where the given information is incomplete so learners must reason about what is missing.'),
+  ('evaluate',
+   'Short individual check on {topic}. Collect the responses before dismissal so results can inform tomorrow''s opening drill.'),
+  ('extend',
+   'Challenge task for early finishers: pose a problem on {topic} with more than one valid approach and ask learners to justify the one they picked.'),
+  ('review',
+   'Revisit the prerequisite skill for {topic} with a five-item board drill, calling on learners who struggled in the previous session.'),
+  ('modelling (i do)',
+   'Think aloud through two examples of {topic}, naming each decision as you make it so learners hear the reasoning, not only the steps.'),
+  ('guided practice (we do)',
+   'Work through {topic} together. Learners write each step on their boards and hold them up so you can spot errors immediately.'),
+  ('independent practice (you do)',
+   'Learners complete a short set on {topic} on their own while you conference with the two or three who need the most support.')
+on conflict (key) do update set body = excluded.body, updated_at = now();
+
+-- Default learning resources per curriculum domain.
+insert into public.domain_materials (domain, materials) values
+  ('Numbers and Number Sense', array['Place value chart','Number cards','Counters','Worksheets']),
+  ('Patterns and Algebra',     array['Algebra tiles','Pattern strips','Graphing board','Worksheets']),
+  ('Geometry',                 array['Geometric solids','Ruler and protractor','Cut-out shapes','Grid paper']),
+  ('Measurement',              array['Measuring tape','Unit cubes','Weighing scale','Activity sheets']),
+  ('Statistics and Probability', array['Data cards','Graphing paper','Spinner and dice','Chart paper'])
+on conflict (domain) do update set materials = excluded.materials, updated_at = now();
+
+-- Lesson templates.
+insert into public.lesson_templates (name, approach, description, sections, active, is_default) values
+  ('DepEd Daily Lesson Log (DLL)', '4As',
+   'The standard DepEd daily lesson log arranged around Activity, Analysis, Abstraction and Application.',
+   array['Activity','Analysis','Abstraction','Application'], true, true),
+  ('Detailed Lesson Plan (DLP)', '7Es',
+   'A detailed plan following the 7E instructional model, best for demonstration and observed teaching.',
+   array['Elicit','Engage','Explore','Explain','Elaborate','Evaluate','Extend'], true, false),
+  ('Inquiry-Based Math Plan', '5Es',
+   'Learner-led investigation model for problem solving and discovery lessons.',
+   array['Engage','Explore','Explain','Elaborate','Evaluate'], true, false),
+  ('Remediation / Catch-Up Plan', 'Gradual Release',
+   'Short-cycle plan for intervention sessions on least-mastered competencies.',
+   array['Review','Modelling (I do)','Guided Practice (We do)','Independent Practice (You do)'], false, false)
+on conflict (name) do update
+  set approach    = excluded.approach,
+      description = excluded.description,
+      sections    = excluded.sections,
+      active      = excluded.active;
+
+-- Grade 3 Mathematics MELCs (DepEd K-12), by quarter:
+--   Q1 whole numbers, addition, subtraction
+--   Q2 multiplication and division
+--   Q3 fractions, geometry (lines & symmetry), number patterns
+--   Q4 measurement (time, units, area, perimeter) and data & probability
+-- The competency wording follows the DepEd MELC; verify the exact code suffixes
+-- against your official MELC copy before a graded submission.
+-- Clear any earlier Grade 3 rows so this list is authoritative on a re-run.
+delete from public.competencies where grade = 'Grade 3';
+
+insert into public.competencies (code, grade, quarter, domain, description, active) values
+  -- Quarter 1 — Numbers and Number Sense
+  ('M3NS-Ia-1.3','Grade 3',1,'Numbers and Number Sense','Visualizes and represents numbers from 1001 up to 10 000 using a variety of materials.',true),
+  ('M3NS-Ia-9.3','Grade 3',1,'Numbers and Number Sense','Reads and writes numbers up to 10 000 in symbols and in words.',true),
+  ('M3NS-Ia-10.3','Grade 3',1,'Numbers and Number Sense','Gives the place value and the value of a digit in 4- to 5-digit numbers.',true),
+  ('M3NS-Ib-15.1','Grade 3',1,'Numbers and Number Sense','Rounds numbers to the nearest ten, hundred and thousand.',true),
+  ('M3NS-Ic-16.3','Grade 3',1,'Numbers and Number Sense','Compares and orders numbers up to 10 000 using relation symbols.',true),
+  ('M3NS-Id-2.2','Grade 3',1,'Numbers and Number Sense','Identifies, reads and writes ordinal numbers from 1st to 100th.',true),
+  ('M3NS-Id-22.2','Grade 3',1,'Numbers and Number Sense','Adds 3- to 4-digit numbers up to three addends with sums up to 10 000, with and without regrouping.',true),
+  ('M3NS-If-29.3','Grade 3',1,'Numbers and Number Sense','Solves routine and non-routine problems involving addition of whole numbers with sums up to 10 000.',true),
+  ('M3NS-Ig-32.6','Grade 3',1,'Numbers and Number Sense','Subtracts 3- to 4-digit numbers with and without regrouping.',true),
+  ('M3NS-Ii-34.5','Grade 3',1,'Numbers and Number Sense','Solves routine and non-routine problems involving subtraction of whole numbers.',true),
+  -- Quarter 2 — Numbers and Number Sense (multiplication and division)
+  ('M3NS-IIa-41.3','Grade 3',2,'Numbers and Number Sense','Visualizes and states the basic multiplication facts for numbers up to 10.',true),
+  ('M3NS-IIc-43.6','Grade 3',2,'Numbers and Number Sense','Multiplies 2- to 3-digit numbers by 1-digit numbers with and without regrouping.',true),
+  ('M3NS-IIe-45.3','Grade 3',2,'Numbers and Number Sense','Solves routine and non-routine problems involving multiplication of whole numbers.',true),
+  ('M3NS-IIf-47','Grade 3',2,'Numbers and Number Sense','Visualizes and states the multiples of 1- to 2-digit numbers.',true),
+  ('M3NS-IIg-51.3','Grade 3',2,'Numbers and Number Sense','Visualizes and states the basic division facts of numbers up to 10.',true),
+  ('M3NS-IIh-52.3','Grade 3',2,'Numbers and Number Sense','Divides 2- to 3-digit numbers by 1-digit numbers without and with a remainder.',true),
+  ('M3NS-IIj-56.2','Grade 3',2,'Numbers and Number Sense','Solves routine and non-routine problems involving division of whole numbers.',true),
+  -- Quarter 3 — Fractions, Geometry, Patterns
+  ('M3NS-IIIa-63','Grade 3',3,'Numbers and Number Sense','Visualizes and represents fractions that are equal to one and greater than one using regions, sets and the number line.',true),
+  ('M3NS-IIIb-76.3','Grade 3',3,'Numbers and Number Sense','Reads and writes fractions that are equal to one and greater than one in symbols and in words.',true),
+  ('M3NS-IIIe-72.7','Grade 3',3,'Numbers and Number Sense','Visualizes and generates equivalent fractions.',true),
+  ('M3GE-IIIe-11','Grade 3',3,'Geometry','Recognizes and draws a point, line, line segment and ray.',true),
+  ('M3GE-IIIf-12.1','Grade 3',3,'Geometry','Recognizes and draws parallel, intersecting and perpendicular lines.',true),
+  ('M3GE-IIIg-7.4','Grade 3',3,'Geometry','Identifies and draws the line of symmetry in a given symmetrical figure.',true),
+  ('M3AL-IIIi-4','Grade 3',3,'Patterns and Algebra','Determines the missing term(s) in a given continuous or repeating pattern of numbers or figures.',true),
+  ('M3AL-IIIj-12','Grade 3',3,'Patterns and Algebra','Finds the missing value in a number sentence involving multiplication or division of whole numbers.',true),
+  -- Quarter 4 — Measurement, Statistics and Probability
+  ('M3ME-IVa-27','Grade 3',4,'Measurement','Tells and writes time in minutes, including a.m. and p.m., using analog and digital clocks.',true),
+  ('M3ME-IVb-39','Grade 3',4,'Measurement','Converts common units of measure of length, mass and capacity from larger to smaller units and vice versa.',true),
+  ('M3ME-IVd-43','Grade 3',4,'Measurement','Measures the area of a square and a rectangle using appropriate square units.',true),
+  ('M3ME-IVf-46','Grade 3',4,'Measurement','Solves routine and non-routine problems involving the area and perimeter of squares and rectangles.',true),
+  ('M3SP-IVg-2.3','Grade 3',4,'Statistics and Probability','Sorts, classifies and organizes data in a table and presents it as a vertical or horizontal bar graph.',true),
+  ('M3SP-IVh-3.3','Grade 3',4,'Statistics and Probability','Infers and interprets data presented in a bar graph.',true),
+  ('M3SP-IVi-7.3','Grade 3',4,'Statistics and Probability','Tells whether an event is sure, likely, equally likely, unlikely or impossible to happen.',true)
+on conflict (code) do update
+  set grade       = excluded.grade,
+      quarter     = excluded.quarter,
+      domain      = excluded.domain,
+      description = excluded.description,
+      active      = excluded.active;
+
+
+-- 13. First-time setup helpers ---------------------------------------------
+
+-- Backfill: give every existing Supabase Auth user a public.users row.
+-- The on_auth_user_created trigger only runs for NEW sign-ups, so accounts that
+-- were created before this file was (re-)run would otherwise have no profile and
+-- hit "No profile is linked to this account" on sign in.
+insert into public.users (id, email, full_name, school, role, status)
+select
+  u.id,
+  coalesce(u.email, ''),
+  coalesce(u.raw_user_meta_data ->> 'full_name', split_part(u.email, '@', 1)),
+  coalesce(u.raw_user_meta_data ->> 'school', ''),
+  coalesce((u.raw_user_meta_data ->> 'role')::public.app_role, 'teacher'),
+  'active'
+from auth.users u
+on conflict (id) do nothing;
+
+-- Make the first administrator. Sign up through the app first, then run:
+--   select public.promote_to_admin('you@example.com');
+create or replace function public.promote_to_admin(p_email text)
+returns public.users
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_user public.users;
+begin
+  update public.users
+     set role = 'admin', status = 'active'
+   where lower(email) = lower(btrim(p_email))
+  returning * into v_user;
+
+  if not found then
+    raise exception 'No account found for %. Sign up through the app first.', p_email
+      using errcode = 'no_data_found';
+  end if;
+  return v_user;
+end;
+$$;
+
+comment on function public.promote_to_admin is
+  'Bootstrap helper: run once from the SQL Editor to make the first administrator.';
+
+revoke execute on function public.promote_to_admin(text) from public, anon, authenticated;
+
+-- Do NOT auto-confirm accounts here: with "Confirm email" ON, an unconfirmed
+-- auth.users row is exactly what should keep an account from signing in.
+-- (If you ever run with "Confirm email" OFF and need to unstick accounts
+-- created while it was on, run manually:
+--   update auth.users set email_confirmed_at = now() where email_confirmed_at is null;)

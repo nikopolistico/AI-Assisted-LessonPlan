@@ -44,73 +44,96 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+
+  /* Warm-neutral paper, navy-tinted ink — pulled from the APES seal. */
+  --background: oklch(0.994 0.002 95);
+  --foreground: oklch(0.24 0.028 266);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.24 0.028 266);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.51 0.16 258);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.24 0.028 266);
+
+  /* Seal navy — sampled from the APES seal border (#002060). */
+  --primary: oklch(0.3 0.135 262);
+  --primary-foreground: oklch(0.985 0.004 95);
+
+  --secondary: oklch(0.965 0.006 95);
+  --secondary-foreground: oklch(0.32 0.03 266);
+  --muted: oklch(0.965 0.006 95);
+  --muted-foreground: oklch(0.52 0.02 266);
+
+  /* Neutral hover/highlight surface — kept plain on purpose so hover states stay minimal. */
+  --accent: oklch(0.965 0.006 95);
+  --accent-foreground: oklch(0.32 0.03 266);
+
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.51 0.16 258);
-  --chart-1: oklch(0.51 0.16 258);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.68 0.15 145);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.51 0.16 258);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.51 0.16 258);
+  --border: oklch(0.905 0.008 95);
+  --input: oklch(0.895 0.009 95);
+  --ring: oklch(0.5 0.14 262);
+
+  /* Navy, gold, seal-leaf green, teal, warm red — in that priority order. */
+  --chart-1: oklch(0.3 0.135 262);
+  --chart-2: oklch(0.83 0.17 90.5);
+  --chart-3: oklch(0.65 0.17 128);
+  --chart-4: oklch(0.62 0.11 210);
+  --chart-5: oklch(0.62 0.2 25);
+
+  /* The sidebar always wears the login page's navy panel, in both light and dark mode. */
+  --sidebar: oklch(0.22 0.1 262);
+  --sidebar-foreground: oklch(0.96 0.01 95);
+  --sidebar-primary: oklch(0.4 0.15 262);
+  --sidebar-primary-foreground: oklch(0.985 0.004 95);
+  --sidebar-accent: oklch(1 0 0 / 8%);
+  --sidebar-accent-foreground: oklch(0.985 0.004 95);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.7 0.12 262);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.72 0.13 254);
-  --primary-foreground: oklch(0.16 0.03 258);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  /* A navy-black, not a flat slate-gray — same hue as the seal, just very dark. */
+  --background: oklch(0.18 0.035 262);
+  --foreground: oklch(0.96 0.005 95);
+  --card: oklch(0.225 0.035 262);
+  --card-foreground: oklch(0.96 0.005 95);
+  --popover: oklch(0.225 0.035 262);
+  --popover-foreground: oklch(0.96 0.005 95);
+
+  --primary: oklch(0.74 0.13 262);
+  --primary-foreground: oklch(0.16 0.04 262);
+
+  --secondary: oklch(0.27 0.03 262);
+  --secondary-foreground: oklch(0.96 0.005 95);
+  --muted: oklch(0.27 0.03 262);
+  --muted-foreground: oklch(0.72 0.018 266);
+
+  --accent: oklch(0.27 0.03 262);
+  --accent-foreground: oklch(0.96 0.005 95);
+
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.72 0.13 254);
-  --chart-1: oklch(0.72 0.13 254);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.72 0.13 254);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.72 0.13 254);
+  --border: oklch(1 0 0 / 11%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.74 0.13 262);
+
+  --chart-1: oklch(0.74 0.13 262);
+  --chart-2: oklch(0.85 0.16 90);
+  --chart-3: oklch(0.7 0.16 128);
+  --chart-4: oklch(0.7 0.11 210);
+  --chart-5: oklch(0.7 0.18 25);
+
+  /* A shade darker than the dark-mode page, so the panel still reads as the
+     brand anchor the way the saturated navy does against the pale light-mode
+     page — matching it exactly here made the sidebar nearly disappear into
+     the dark background. */
+  --sidebar: oklch(0.145 0.05 262);
+  --sidebar-foreground: oklch(0.94 0.01 95);
+  --sidebar-primary: oklch(0.42 0.15 262);
+  --sidebar-primary-foreground: oklch(0.985 0.004 95);
+  --sidebar-accent: oklch(1 0 0 / 10%);
+  --sidebar-accent-foreground: oklch(0.96 0.005 95);
+  --sidebar-border: oklch(1 0 0 / 14%);
+  --sidebar-ring: oklch(0.68 0.13 262);
 }
 
 @layer base {
@@ -124,12 +147,37 @@
   }
 }
 
+/*
+ * Holds the print/PDF document off-screen (not display:none, so html2canvas can
+ * still rasterise it for the Download PDF button) until an actual print happens,
+ * at which point it flows into the page like normal content.
+ */
+.print-doc {
+  position: absolute;
+  left: -10000px;
+  top: 0;
+  width: 794px;
+}
+
 @media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
   .no-print {
     display: none !important;
   }
   .print-plain {
     border: none !important;
     box-shadow: none !important;
+  }
+  .print-doc {
+    position: static;
+    left: auto;
+    width: auto;
+  }
+  html,
+  body {
+    background: #ffffff;
   }
 }

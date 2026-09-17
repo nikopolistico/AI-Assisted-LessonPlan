@@ -92,7 +92,9 @@ function move(index: number, delta: number) {
   list[target] = item
 }
 
-function submit() {
+const saving = ref(false)
+
+async function submit() {
   formError.value = ''
   const names = sections.value.map((s) => s.text.trim()).filter(Boolean)
   if (!form.name.trim()) {
@@ -113,16 +115,38 @@ function submit() {
     isDefault: form.isDefault,
   }
 
-  if (editingId.value) catalog.updateTemplate(editingId.value, payload)
-  else catalog.addTemplate(payload)
+  saving.value = true
+  try {
+    if (editingId.value) await catalog.updateTemplate(editingId.value, payload)
+    else await catalog.addTemplate(payload)
+    dialogOpen.value = false
+  } catch (e) {
+    formError.value = e instanceof Error ? e.message : 'Could not save the template.'
+  } finally {
+    saving.value = false
+  }
+}
 
-  dialogOpen.value = false
+async function makeDefault(id: string) {
+  try {
+    await catalog.makeDefault(id)
+  } catch {
+    // no-op — the current default stays in place
+  }
+}
+
+async function toggleActive(template: LessonTemplate) {
+  try {
+    await catalog.updateTemplate(template.id, { active: !template.active })
+  } catch {
+    // no-op
+  }
 }
 
 const pendingDelete = ref<LessonTemplate | null>(null)
 
-function confirmDelete() {
-  if (pendingDelete.value) catalog.removeTemplate(pendingDelete.value.id)
+async function confirmDelete() {
+  if (pendingDelete.value) await catalog.removeTemplate(pendingDelete.value.id)
   pendingDelete.value = null
 }
 </script>
@@ -171,13 +195,13 @@ function confirmDelete() {
               </DropdownMenuItem>
               <DropdownMenuItem
                 v-if="!template.isDefault"
-                @select="catalog.makeDefault(template.id)"
+                @select="makeDefault(template.id)"
               >
                 <Star />
                 Set as default
               </DropdownMenuItem>
               <DropdownMenuItem
-                @select="catalog.updateTemplate(template.id, { active: !template.active })"
+                @select="toggleActive(template)"
               >
                 {{ template.active ? 'Set inactive' : 'Set active' }}
               </DropdownMenuItem>
@@ -315,7 +339,9 @@ function confirmDelete() {
 
         <DialogFooter>
           <Button type="button" variant="outline" @click="dialogOpen = false">Cancel</Button>
-          <Button type="submit">{{ editingId ? 'Save changes' : 'Add template' }}</Button>
+          <Button type="submit" :disabled="saving">
+            {{ editingId ? 'Save changes' : 'Add template' }}
+          </Button>
         </DialogFooter>
       </form>
     </DialogContent>
