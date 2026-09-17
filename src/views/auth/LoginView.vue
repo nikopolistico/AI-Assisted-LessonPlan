@@ -167,7 +167,7 @@ async function register() {
         <img
           :src="logoUrl"
           alt="Agusan Pequeño Elementary School"
-          class="size-10 shrink-0 rounded-xl bg-gradient-to from-dark-200 to-slate-400 object-contain p-1 ring-1 ring-black/10"
+          class="size-10 shrink-0 rounded-xl bg-gradient-to-br from-dark-200 to-slate-400 object-contain p-1 ring-1 ring-black/10"
         />
         <div class="min-w-0">
           <p class="text-sm font-semibold tracking-tight">Lesson Plan AI</p>
