@@ -14,6 +14,10 @@
     "module": "preserve",
     "moduleResolution": "bundler",
 
+    // vite.config.ts imports api/lesson-plan.ts with an explicit .ts extension
+    // (Vite's native config loader wants that); allow it under bundler resolution.
+    "allowImportingTsExtensions": true,
+
     // Include Node.js types and avoid accidentally including other `@types/*` packages.
     "types": ["node"],
 

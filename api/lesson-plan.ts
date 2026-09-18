@@ -49,6 +49,10 @@ export default async function handler(request: Request): Promise<Response> {
       model,
       ...(stream ? { stream: true } : {}),
       ...(isNativeOpenAI ? { temperature: 0.7 } : {}),
+      // OpenRouter-specific: makes the model think before answering, even on
+      // models that don't reason by default. readSseStream() already displays
+      // the resulting reasoning delta during the typewriter stream.
+      ...(isOpenRouter ? { reasoning: { enabled: true } } : {}),
       messages: body.messages,
     }),
   })

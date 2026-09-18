@@ -173,6 +173,6 @@ Environment Variables**:
 `VITE_OPENAI_MODEL` in `.env.local` is separate and only controls the model name shown on the
 Generate screen — keep it in sync with `OPENAI_MODEL`, but it doesn't select the model.
 
-Plain `npm run dev` (Vite only) does not run `/api` functions. To test generation locally, run
-`npx vercel dev` instead (reads `OPENAI_API_KEY` etc. from `.env.local` the same way), or deploy
-and test on Vercel.
+`npm run dev` also serves `/api/lesson-plan` locally: `vite.config.ts` runs that same handler
+through a small dev-only middleware, reading `OPENAI_API_KEY` etc. straight from `.env.local`, so
+no separate `vercel dev` step is needed to test generation.
