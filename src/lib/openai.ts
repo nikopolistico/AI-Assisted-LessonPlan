@@ -1,40 +1,17 @@
 /**
- * Client-side lesson-plan generation through an OpenAI-compatible chat API.
+ * Lesson-plan generation through the `/api/lesson-plan` server proxy (see
+ * `api/lesson-plan.ts`). The browser can never call api.openai.com directly —
+ * OpenAI does not send CORS headers permitting cross-origin requests — so the
+ * proxy holds the real API key as a server secret and forwards the request.
  *
- * Works with the OpenAI API directly or any compatible gateway (OpenRouter, …)
- * via `VITE_OPENAI_BASE_URL`. The key is read from `VITE_OPENAI_API_KEY` and the
- * request is made straight from the browser, so this is only appropriate for
- * local or single-school use where the deployed bundle is not public. For a
- * public deployment, move this call behind a Supabase Edge Function and keep the
- * key as a server secret.
+ * `VITE_OPENAI_MODEL` here is display-only (shown on the Generate screen); the
+ * model actually used is the proxy's own `OPENAI_MODEL` env var and should be
+ * kept in sync with it.
  */
 import type { Competency, LessonRequest, LessonSection, LessonTemplate } from '@/types'
 
-const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
-const model = (import.meta.env.VITE_OPENAI_MODEL as string | undefined) || 'gpt-4o-mini'
-
 /** The model id the generator talks to — shown on the Generate screen. */
-export const generatorModel = model
-
-/**
- * Defaults to OpenAI. Point this at another host (with no trailing slash) to use
- * an OpenAI-compatible provider — e.g. https://openrouter.ai/api/v1.
- */
-const baseUrl = (
-  (import.meta.env.VITE_OPENAI_BASE_URL as string | undefined) || 'https://api.openai.com/v1'
-).replace(/\/$/, '')
-
-const host = new URL(baseUrl).hostname
-/** OpenAI-only request fields (JSON mode) are skipped for third-party gateways. */
-const isNativeOpenAI = /(^|\.)api\.openai\.com$/.test(host)
-const isOpenRouter = /(^|\.)openrouter\.ai$/.test(host)
-
-/** True once an API key is present. Screens fall back to a clear error otherwise. */
-export const isOpenAIConfigured = Boolean(apiKey)
-
-if (!isOpenAIConfigured && import.meta.env.DEV) {
-  console.warn('[openai] VITE_OPENAI_API_KEY is not set — lesson generation will fail.')
-}
+export const generatorModel = (import.meta.env.VITE_OPENAI_MODEL as string | undefined) || 'gpt-4o-mini'
 
 export interface LessonPlanContent {
   title: string
@@ -280,12 +257,6 @@ export async function composeLessonPlan(
   args: ComposeArgs,
   onChunk?: (full: string) => void,
 ): Promise<LessonPlanContent> {
-  if (!apiKey) {
-    throw new Error(
-      'The lesson generator is not configured. Add VITE_OPENAI_API_KEY to your .env.local and restart the dev server.',
-    )
-  }
-
   const stream = typeof onChunk === 'function'
 
   // Content is sent as an array of parts: OpenAI accepts it, and third-party
@@ -295,20 +266,11 @@ export async function composeLessonPlan(
     content: [{ type: 'text', text }],
   })
 
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+  const response = await fetch('/api/lesson-plan', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-      // Optional attribution headers OpenRouter uses for its app rankings.
-      ...(isOpenRouter && typeof window !== 'undefined'
-        ? { 'HTTP-Referer': window.location.origin, 'X-Title': 'Lesson Plan AI' }
-        : {}),
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model,
       ...(stream ? { stream: true } : {}),
-      ...(isNativeOpenAI ? { temperature: 0.7 } : {}),
       messages: [
         textMessage(
           'system',
@@ -323,7 +285,7 @@ export async function composeLessonPlan(
     const detail = await response.text().catch(() => '')
     throw new Error(
       `Lesson generation request failed (${response.status}). ${
-        detail.slice(0, 200) || 'Check your API key, model name and credit balance.'
+        detail.slice(0, 200) || 'Check the server-side OPENAI_API_KEY, model name and credit balance.'
       }`,
     )
   }

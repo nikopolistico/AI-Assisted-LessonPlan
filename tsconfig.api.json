@@ -1,0 +1,14 @@
+// TSConfig for the Vercel Edge Functions under api/ — they run in the Edge
+// runtime (Web Fetch API globals: Request, Response, fetch) but Vercel also
+// statically inlines `process.env.*` reads, so Node's ambient types cover it.
+{
+  "extends": "@tsconfig/node24/tsconfig.json",
+  "include": ["api/**/*"],
+  "compilerOptions": {
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "noEmit": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.api.tsbuildinfo"
+  }
+}

@@ -22,6 +22,7 @@ export const supabase = createClient<Database>(url ?? 'http://localhost', anonKe
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    storageKey: 'lessonplan-auth',
   },
 })
 
@@ -31,6 +32,12 @@ export const supabase = createClient<Database>(url ?? 'http://localhost', anonKe
  * own session for the new account's session as soon as it succeeds — this
  * client keeps its own (never-saved) session so registering a teacher can't
  * sign the admin out of theirs.
+ *
+ * It needs its own `storageKey`, distinct from the main client's: without one,
+ * both clients share the same internal lock/storage key and Supabase logs
+ * "Multiple GoTrueClient instances detected... undefined behavior", which in
+ * practice can race with the main client's session and cause spurious 403s
+ * on sign-out.
  */
 export const supabaseAdminAuth = createClient<Database>(
   url ?? 'http://localhost',
@@ -40,6 +47,7 @@ export const supabaseAdminAuth = createClient<Database>(
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
+      storageKey: 'lessonplan-admin-auth',
     },
   },
 )

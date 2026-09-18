@@ -153,3 +153,26 @@ const { data, error } = await supabase.rpc('generate_lesson_plan', {
 
 The stores in `src/stores/` call these directly — `usePlansStore().generate()` wraps
 `generate_lesson_plan`, and so on.
+
+## AI lesson generation
+
+`src/lib/openai.ts` builds the prompt and calls `/api/lesson-plan` — a Vercel Edge Function
+(`api/lesson-plan.ts`) that forwards to an OpenAI-compatible `/chat/completions` endpoint. The
+browser never talks to the model API directly: OpenAI (and most gateways) don't send CORS headers
+permitting that, and it would also ship the API key to every visitor.
+
+Configure the proxy with plain (non-`VITE_`) env vars in the Vercel project's **Settings →
+Environment Variables**:
+
+| Variable          | Required | Purpose                                                        |
+| ----------------- | -------- | --------------------------------------------------------------- |
+| `OPENAI_API_KEY`  | yes      | Server-side secret, never sent to the browser                   |
+| `OPENAI_MODEL`    | no       | Defaults to `gpt-4o-mini`                                       |
+| `OPENAI_BASE_URL` | no       | Defaults to `https://api.openai.com/v1`; point at a gateway (e.g. OpenRouter) to use one |
+
+`VITE_OPENAI_MODEL` in `.env.local` is separate and only controls the model name shown on the
+Generate screen — keep it in sync with `OPENAI_MODEL`, but it doesn't select the model.
+
+Plain `npm run dev` (Vite only) does not run `/api` functions. To test generation locally, run
+`npx vercel dev` instead (reads `OPENAI_API_KEY` etc. from `.env.local` the same way), or deploy
+and test on Vercel.
