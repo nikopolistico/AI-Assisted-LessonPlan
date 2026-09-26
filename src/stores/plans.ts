@@ -86,7 +86,8 @@ export const usePlansStore = defineStore('plans', () => {
         })
         .select()
         .single()
-      if (insertError || !data) throw new Error(insertError?.message ?? 'The plan could not be saved.')
+      if (insertError || !data)
+        throw new Error(insertError?.message ?? 'The plan could not be saved.')
 
       if (template.id) {
         await supabase.rpc('increment_template_usage', { p_template_id: template.id })
@@ -113,21 +114,24 @@ export const usePlansStore = defineStore('plans', () => {
       if (!template) throw new Error('The plan’s template is no longer available.')
 
       const attempt = source.generationCount + 1
-      const content = await composeLessonPlan({
-        request: {
-          topic: source.topic,
-          competencyId: source.competencyId,
-          grade: source.grade,
-          quarter: source.quarter,
-          duration: source.duration,
-          templateId: source.templateId,
-          learners: '',
-          notes: source.remarks,
+      const content = await composeLessonPlan(
+        {
+          request: {
+            topic: source.topic,
+            competencyId: source.competencyId,
+            grade: source.grade,
+            quarter: source.quarter,
+            duration: source.duration,
+            templateId: source.templateId,
+            learners: '',
+            notes: source.remarks,
+          },
+          competency,
+          template,
+          attempt,
         },
-        competency,
-        template,
-        attempt,
-      }, onChunk)
+        onChunk,
+      )
 
       const { data, error: updateError } = await supabase
         .from('lesson_plans')
@@ -161,15 +165,25 @@ export const usePlansStore = defineStore('plans', () => {
       .eq('id', id)
       .select()
       .single()
-    if (updateError || !data) throw new Error(updateError?.message ?? 'The plan could not be saved.')
+    if (updateError || !data)
+      throw new Error(updateError?.message ?? 'The plan could not be saved.')
     const saved = toPlan(data)
     all.value = all.value.map((p) => (p.id === id ? saved : p))
     return saved
   }
 
   async function remove(id: string) {
-    const { error: deleteError } = await supabase.from('lesson_plans').delete().eq('id', id)
+    // Row-level security turns a forbidden delete into a silent no-op rather than
+    // an error, so ask for the deleted row back to confirm something was removed.
+    const { data, error: deleteError } = await supabase
+      .from('lesson_plans')
+      .delete()
+      .eq('id', id)
+      .select('id')
     if (deleteError) throw new Error(deleteError.message)
+    if (!data?.length) {
+      throw new Error('The plan was not deleted. It may already be gone, or you may not own it.')
+    }
     all.value = all.value.filter((p) => p.id !== id)
   }
 
@@ -203,7 +217,8 @@ export const usePlansStore = defineStore('plans', () => {
       })
       .select()
       .single()
-    if (insertError || !data) throw new Error(insertError?.message ?? 'The plan could not be copied.')
+    if (insertError || !data)
+      throw new Error(insertError?.message ?? 'The plan could not be copied.')
     const copy = toPlan(data)
     all.value = [copy, ...all.value]
     return copy

@@ -1,13 +1,25 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import { Copy, Eye, FileText, MoreHorizontal, Search, Sparkles, Trash2 } from 'lucide-vue-next'
+import {
+  CheckCircle2,
+  Copy,
+  Eye,
+  FileText,
+  Loader2,
+  MoreHorizontal,
+  Search,
+  Sparkles,
+  Trash2,
+  XCircle,
+} from 'lucide-vue-next'
 import PageHeader from '@/components/app/PageHeader.vue'
 import EmptyState from '@/components/app/EmptyState.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Progress } from '@/components/ui/progress'
 import {
   Dialog,
   DialogContent,
@@ -66,12 +78,48 @@ const filtered = computed(() => {
   })
 })
 
+// --- Delete flow: confirm → deleting → deleted | failed -----------------------
+// The plan stays in `pendingDelete` while the dialog closes, so its title doesn't
+// blank out mid-animation; `deleteOpen` alone drives visibility.
+type DeleteState = 'confirm' | 'deleting' | 'deleted' | 'failed'
+
 const pendingDelete = ref<LessonPlan | null>(null)
+const deleteOpen = ref(false)
+const deleteState = ref<DeleteState>('confirm')
+const deleteError = ref('')
+
+function askDelete(plan: LessonPlan) {
+  pendingDelete.value = plan
+  deleteState.value = 'confirm'
+  deleteError.value = ''
+  deleteOpen.value = true
+}
+
+function onDeleteOpenChange(open: boolean) {
+  // A delete in flight can't be dismissed halfway through.
+  if (!open && deleteState.value === 'deleting') return
+  deleteOpen.value = open
+}
 
 async function confirmDelete() {
-  if (pendingDelete.value) await plans.remove(pendingDelete.value.id)
-  pendingDelete.value = null
+  if (!pendingDelete.value) return
+  deleteState.value = 'deleting'
+  deleteError.value = ''
+  try {
+    await plans.remove(pendingDelete.value.id)
+    deleteState.value = 'deleted'
+    setTimeout(() => {
+      if (deleteState.value === 'deleted') deleteOpen.value = false
+    }, 1200)
+  } catch (e) {
+    deleteError.value = e instanceof Error ? e.message : 'Something went wrong. Please try again.'
+    deleteState.value = 'failed'
+  }
 }
+
+const deleteProgress = computed(
+  () => ({ confirm: 0, deleting: 65, deleted: 100, failed: 100 })[deleteState.value],
+)
 
 async function duplicate(id: string) {
   const copy = await plans.duplicate(id)
@@ -196,7 +244,7 @@ async function duplicate(id: string) {
                     Duplicate
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" @select="pendingDelete = plan">
+                  <DropdownMenuItem variant="destructive" @select="askDelete(plan)">
                     <Trash2 />
                     Delete
                   </DropdownMenuItem>
@@ -209,18 +257,72 @@ async function duplicate(id: string) {
     </CardContent>
   </Card>
 
-  <Dialog :open="pendingDelete !== null" @update:open="(v) => !v && (pendingDelete = null)">
-    <DialogContent class="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>Delete this lesson plan?</DialogTitle>
-        <DialogDescription>
-          “{{ pendingDelete?.title }}” will be removed permanently. This cannot be undone.
-        </DialogDescription>
-      </DialogHeader>
-      <DialogFooter>
-        <Button variant="outline" @click="pendingDelete = null">Cancel</Button>
-        <Button variant="destructive" @click="confirmDelete">Delete plan</Button>
-      </DialogFooter>
+  <Dialog :open="deleteOpen" @update:open="onDeleteOpenChange">
+    <DialogContent class="sm:max-w-md" :show-close-button="deleteState !== 'deleting'">
+      <!-- Confirm -->
+      <template v-if="deleteState === 'confirm'">
+        <DialogHeader>
+          <DialogTitle>Delete this lesson plan?</DialogTitle>
+          <DialogDescription>
+            “{{ pendingDelete?.title }}” will be removed permanently. This cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" @click="deleteOpen = false">Cancel</Button>
+          <Button variant="destructive" @click="confirmDelete">
+            <Trash2 />
+            Delete plan
+          </Button>
+        </DialogFooter>
+      </template>
+
+      <!-- Deleting / deleted / failed -->
+      <template v-else>
+        <div class="flex flex-col items-center gap-4 pt-2 text-center" aria-live="polite">
+          <div
+            class="flex size-12 items-center justify-center rounded-full"
+            :class="{
+              'bg-destructive/10 text-destructive': deleteState !== 'deleted',
+              'bg-(--brand-green)/15 text-(--brand-green)': deleteState === 'deleted',
+            }"
+          >
+            <Loader2 v-if="deleteState === 'deleting'" class="size-6 animate-spin" />
+            <CheckCircle2 v-else-if="deleteState === 'deleted'" class="size-6" />
+            <XCircle v-else class="size-6" />
+          </div>
+
+          <DialogHeader class="items-center text-center sm:text-center">
+            <DialogTitle>
+              {{
+                deleteState === 'deleting'
+                  ? 'Deleting lesson plan…'
+                  : deleteState === 'deleted'
+                    ? 'Lesson plan deleted'
+                    : 'Failed to delete'
+              }}
+            </DialogTitle>
+            <DialogDescription>
+              <template v-if="deleteState === 'failed'">{{ deleteError }}</template>
+              <template v-else>“{{ pendingDelete?.title }}”</template>
+            </DialogDescription>
+          </DialogHeader>
+
+          <Progress
+            :model-value="deleteProgress"
+            class="h-1.5"
+            :indicator-class="{
+              'duration-700': true,
+              'bg-(--brand-green)': deleteState === 'deleted',
+              'bg-destructive': deleteState !== 'deleted',
+            }"
+          />
+        </div>
+
+        <DialogFooter v-if="deleteState === 'failed'">
+          <Button variant="outline" @click="deleteOpen = false">Cancel</Button>
+          <Button variant="destructive" @click="confirmDelete">Try again</Button>
+        </DialogFooter>
+      </template>
     </DialogContent>
   </Dialog>
 </template>
