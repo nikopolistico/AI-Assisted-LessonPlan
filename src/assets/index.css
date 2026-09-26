@@ -167,6 +167,27 @@
   }
 }
 
+/* Scroll-in animation applied by the `v-reveal` directive (src/lib/reveal.ts). */
+.reveal {
+  opacity: 0;
+  transform: translateY(1.75rem);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal.is-revealed {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
 /*
  * Holds the print/PDF document off-screen (not display:none, so html2canvas can
  * still rasterise it for the Download PDF button) until an actual print happens,

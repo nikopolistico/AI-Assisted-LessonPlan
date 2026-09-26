@@ -5,12 +5,17 @@ import type { Role, User } from '@/types'
 import { supabase } from '@/lib/supabase'
 import { toUser } from '@/lib/mappers'
 
+/** Drives the full-screen sign-in / sign-out progress overlay. */
+export type AuthStatus =
+  'idle' | 'verifying' | 'loading-profile' | 'success' | 'failed' | 'signing-out' | 'signed-out'
+
 export const useAuthStore = defineStore('auth', () => {
   const session = ref<Session | null>(null)
   const currentUser = ref<User | null>(null)
   const ready = ref(false)
   const error = ref('')
   const pending = ref(false)
+  const status = ref<AuthStatus>('idle')
 
   const isAuthenticated = computed(() => currentUser.value !== null)
   const role = computed<Role | null>(() => currentUser.value?.role ?? null)
@@ -58,34 +63,39 @@ export const useAuthStore = defineStore('auth', () => {
     return message || 'Sign in failed. Please try again.'
   }
 
+  function fail(message: string) {
+    pending.value = false
+    error.value = message
+    status.value = 'failed'
+    return null
+  }
+
+  function clearStatus() {
+    status.value = 'idle'
+  }
+
   async function login(email: string, password: string) {
     pending.value = true
     error.value = ''
+    status.value = 'verifying'
 
     const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     })
 
-    if (signInError || !data.session) {
-      pending.value = false
-      error.value = describeSignInError(signInError?.message)
-      return null
-    }
+    if (signInError || !data.session) return fail(describeSignInError(signInError?.message))
 
+    status.value = 'loading-profile'
     const profile = await fetchProfile(data.user.id)
 
     if (!profile) {
       await supabase.auth.signOut()
-      pending.value = false
-      error.value = 'No profile is linked to this account. Contact your division administrator.'
-      return null
+      return fail('No profile is linked to this account. Contact your division administrator.')
     }
     if (profile.status === 'disabled') {
       await supabase.auth.signOut()
-      pending.value = false
-      error.value = 'This account has been disabled. Contact your division administrator.'
-      return null
+      return fail('This account has been disabled. Contact your division administrator.')
     }
 
     session.value = data.session
@@ -93,14 +103,17 @@ export const useAuthStore = defineStore('auth', () => {
     await supabase.rpc('record_login')
 
     pending.value = false
+    status.value = 'success'
     return profile
   }
 
   async function logout() {
+    status.value = 'signing-out'
     await supabase.auth.signOut()
     currentUser.value = null
     session.value = null
     error.value = ''
+    status.value = 'signed-out'
   }
 
   return {
@@ -112,6 +125,8 @@ export const useAuthStore = defineStore('auth', () => {
     role,
     error,
     pending,
+    status,
+    clearStatus,
     ensureReady,
     login,
     logout,

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
+import AuthStatusOverlay from '@/components/app/AuthStatusOverlay.vue'
 import { useTheme } from '@/composables/useTheme'
 
 useTheme()
@@ -7,4 +8,5 @@ useTheme()
 
 <template>
   <RouterView />
+  <AuthStatusOverlay />
 </template>

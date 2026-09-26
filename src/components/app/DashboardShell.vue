@@ -66,7 +66,7 @@ async function confirmSignOut() {
   <div class="bg-background min-h-screen">
     <!-- Sidebar -->
     <aside
-      class="bg-sidebar text-sidebar-foreground border-sidebar-border fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r transition-[width,transform] duration-200 lg:translate-x-0"
+      class="bg-sidebar text-sidebar-foreground border-sidebar-border fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r transition-[width,transform] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none lg:translate-x-0"
       :class="[
         mobileOpen ? 'translate-x-0' : '-translate-x-full',
         collapsed ? 'lg:w-16' : 'lg:w-64',
@@ -165,10 +165,11 @@ async function confirmSignOut() {
       </div>
     </aside>
 
-    <!-- Scrim -->
+    <!-- Scrim: always mounted so it can fade in and out with the drawer. -->
     <div
-      v-if="mobileOpen"
-      class="fixed inset-0 z-40 bg-black/50 lg:hidden"
+      aria-hidden="true"
+      class="fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 motion-reduce:transition-none lg:hidden"
+      :class="mobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0'"
       @click="mobileOpen = false"
     />
 
