@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ResultDialog from '@/components/app/ResultDialog.vue'
+import { useResult } from '@/composables/useResult'
 import { computed, reactive, ref, watch } from 'vue'
 import {
   Ban,
@@ -110,6 +112,8 @@ const statusVariant: Record<UserStatus, 'success' | 'warning' | 'outline'> = {
 const dialogOpen = ref(false)
 const editingId = ref<string | null>(null)
 const formError = ref('')
+const result = useResult()
+
 const saving = ref(false)
 
 const form = reactive({
@@ -166,8 +170,9 @@ async function submit() {
       await users.setStatus(editingId.value, form.status)
     }
     dialogOpen.value = false
+    result.success('Account updated', `${form.name.trim()}'s changes were saved.`)
   } catch (e) {
-    formError.value = e instanceof Error ? e.message : 'Could not save the account.'
+    result.error('Could not save the account', e)
   } finally {
     saving.value = false
   }
@@ -176,8 +181,9 @@ async function submit() {
 async function setStatus(id: string, status: UserStatus) {
   try {
     await users.setStatus(id, status)
-  } catch {
-    // no-op — the row keeps its previous status
+  } catch (e) {
+    // The row keeps its previous status.
+    result.error('Could not change the status', e)
   }
 }
 
@@ -185,8 +191,15 @@ async function setStatus(id: string, status: UserStatus) {
 const pendingDelete = ref<User | null>(null)
 
 async function confirmDelete() {
-  if (pendingDelete.value) await users.remove(pendingDelete.value.id)
+  const target = pendingDelete.value
   pendingDelete.value = null
+  if (!target) return
+  try {
+    await users.remove(target.id)
+    result.success('Account deleted', `${target.name} was removed.`)
+  } catch (e) {
+    result.error('Could not delete the account', e)
+  }
 }
 
 // --- Register teacher --------------------------------------------------------
@@ -825,4 +838,11 @@ async function submitRegistration() {
       </DialogFooter>
     </DialogContent>
   </Dialog>
+
+  <ResultDialog
+    v-model:open="result.state.open"
+    :kind="result.state.kind"
+    :title="result.state.title"
+    :description="result.state.description"
+  />
 </template>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ResultDialog from '@/components/app/ResultDialog.vue'
+import { useResult } from '@/composables/useResult'
 import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { Copy, Eye, FileText, MoreHorizontal, Search, Sparkles, Trash2 } from 'lucide-vue-next'
@@ -66,11 +68,20 @@ const filtered = computed(() => {
   })
 })
 
+const result = useResult()
+
 const pendingDelete = ref<LessonPlan | null>(null)
 
 async function confirmDelete() {
-  if (pendingDelete.value) await plans.remove(pendingDelete.value.id)
+  const target = pendingDelete.value
   pendingDelete.value = null
+  if (!target) return
+  try {
+    await plans.remove(target.id)
+    result.success('Lesson plan deleted', `“${target.title}” was removed.`)
+  } catch (e) {
+    result.error('Could not delete the lesson plan', e)
+  }
 }
 
 async function duplicate(id: string) {
@@ -223,4 +234,11 @@ async function duplicate(id: string) {
       </DialogFooter>
     </DialogContent>
   </Dialog>
+
+  <ResultDialog
+    v-model:open="result.state.open"
+    :kind="result.state.kind"
+    :title="result.state.title"
+    :description="result.state.description"
+  />
 </template>
