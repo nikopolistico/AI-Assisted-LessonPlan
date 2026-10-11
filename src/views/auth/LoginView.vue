@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-vue-next'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { AlertCircle, ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-vue-next'
 import logoUrl from '@/assets/images/logo.png'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -89,6 +89,16 @@ async function submit() {
     <!-- Form panel -->
     <div class="bg-background flex items-center justify-center px-4 py-10 sm:px-6 lg:py-16">
       <div class="rise-in w-full max-w-sm space-y-6">
+        <RouterLink
+          to="/"
+          class="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 group -ml-1 inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-sm font-medium transition-colors focus-visible:ring-[3px] focus-visible:outline-none"
+        >
+          <ArrowLeft
+            class="size-4 transition-transform duration-200 group-hover:-translate-x-0.5 motion-reduce:transition-none"
+          />
+          Back to home
+        </RouterLink>
+
         <!-- Compact brand lockup — mobile only. -->
         <div class="flex flex-col items-center gap-3 text-center lg:hidden">
           <img
@@ -149,8 +159,8 @@ async function submit() {
                 :aria-pressed="showPassword"
                 @click="showPassword = !showPassword"
               >
-                <EyeOff v-if="showPassword" class="size-4" />
-                <Eye v-else class="size-4" />
+                <Eye v-if="showPassword" class="size-4" />
+                <EyeOff v-else class="size-4" />
               </button>
             </div>
             <p v-if="errors.password" class="text-destructive text-xs">{{ errors.password }}</p>

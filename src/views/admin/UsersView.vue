@@ -642,8 +642,8 @@ async function submitRegistration() {
                         :aria-pressed="regShowPassword"
                         @click="regShowPassword = !regShowPassword"
                       >
-                        <EyeOff v-if="regShowPassword" class="size-4" />
-                        <Eye v-else class="size-4" />
+                        <Eye v-if="regShowPassword" class="size-4" />
+                        <EyeOff v-else class="size-4" />
                       </button>
                     </div>
                     <Button type="button" variant="outline" @click="fillGeneratedPassword">
