@@ -12,7 +12,7 @@ const props = defineProps<{ class?: HTMLAttributes['class'] }>()
     alt="Agusan Pequeño Elementary School"
     :class="
       cn(
-        'size-9 shrink-0 rounded-lg bg-gradient-to-br from-[#45598b] to-(--brand-navy) object-contain p-0.5 ring-1 ring-black/5',
+        'size-9 shrink-0 object-contain drop-shadow-[0_1px_3px_rgb(0_0_0/0.35)]',
         props.class,
       )
     "

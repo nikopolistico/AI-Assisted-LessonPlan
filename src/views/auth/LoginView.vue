@@ -50,7 +50,7 @@ async function submit() {
     <!-- lockup on mobile instead of squeezing this in above the fold. -->
     <div
       class="relative hidden flex-col justify-between overflow-hidden p-10 text-white lg:flex"
-      style="background: radial-gradient(circle at 25% 15%, #45598b 0%, #1c2d52 75%)"
+      style="background: radial-gradient(circle at 25% 15%, #2f6a45 0%, #112a1e 75%)"
     >
       <img
         :src="logoUrl"
@@ -63,7 +63,7 @@ async function submit() {
         <img
           :src="logoUrl"
           alt="Agusan Pequeño Elementary School"
-          class="size-10 shrink-0 rounded-xl bg-gradient-to-br from-[#45598b] to-(--brand-navy) object-contain p-1 ring-1 ring-black/10"
+          class="size-10 shrink-0 object-contain drop-shadow-[0_1px_3px_rgb(0_0_0/0.35)]"
         />
         <div class="min-w-0">
           <p class="text-sm font-semibold tracking-tight">Lesson Plan AI</p>
@@ -88,7 +88,7 @@ async function submit() {
 
     <!-- Form panel -->
     <div class="bg-background flex items-center justify-center px-4 py-10 sm:px-6 lg:py-16">
-      <div class="w-full max-w-sm space-y-6">
+      <div class="rise-in w-full max-w-sm space-y-6">
         <!-- Compact brand lockup — mobile only. -->
         <div class="flex flex-col items-center gap-3 text-center lg:hidden">
           <img
@@ -144,7 +144,7 @@ async function submit() {
               />
               <button
                 type="button"
-                class="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-md focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                class="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-md transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
                 :aria-label="showPassword ? 'Hide password' : 'Show password'"
                 :aria-pressed="showPassword"
                 @click="showPassword = !showPassword"

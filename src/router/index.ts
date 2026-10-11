@@ -19,7 +19,12 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   scrollBehavior: () => ({ top: 0 }),
   routes: [
-    { path: '/', name: 'root', redirect: () => homeFor(useAuthStore().role) },
+    {
+      path: '/',
+      name: 'landing',
+      component: () => import('@/views/LandingView.vue'),
+      meta: { public: true },
+    },
     {
       path: '/login',
       name: 'login',

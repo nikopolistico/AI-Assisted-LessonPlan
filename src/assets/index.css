@@ -59,76 +59,76 @@
   --brand-navy: #253c6d;
   --brand-green: #689d4b;
 
-  /* Near-white page, pure-white cards — navy ink. */
-  --background: #fbfbfc;
-  --foreground: var(--brand-navy);
+  /*
+   * "Chalkboard": deep board green for the sidebar, pale paper-green page,
+   * white cards, chalk-yellow for the active item. Navy stays in the palette
+   * for the info colour and the fifth chart series.
+   */
+  --background: #f3f7f1;
+  --foreground: #16281e;
   --card: var(--brand-white);
-  --card-foreground: var(--brand-navy);
+  --card-foreground: #16281e;
   --popover: var(--brand-white);
-  --popover-foreground: var(--brand-navy);
+  --popover-foreground: #16281e;
 
-  --primary: var(--brand-navy);
+  --primary: #2c6a3c;
   --primary-foreground: var(--brand-white);
 
-  /* Pastel gold chip — the few secondary buttons/badges get a branded tint. */
   --secondary: #fff0be;
-  --secondary-foreground: var(--brand-navy);
+  --secondary-foreground: #16281e;
 
-  /* Neutral navy-tinted surface, used broadly, so it stays quiet on purpose. */
-  --muted: #f2f3f6;
-  --muted-foreground: #5b6c8f;
+  --muted: #e9f0e6;
+  --muted-foreground: #5a6d60;
 
-  /* Warm hover/highlight surface — a faint wash of gold. */
-  --accent: #fffae9;
-  --accent-foreground: var(--brand-navy);
+  --accent: #e6f0e1;
+  --accent-foreground: #16281e;
 
   /* Error red isn't in the brand palette on purpose: destructive actions stay
      universally recognisable rather than borrowing the warm brand orange. */
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: #e9ecf0;
-  --input: #e0e4eb;
-  --ring: #7180a0;
+  --border: #dce6d8;
+  --input: #cfdccb;
+  --ring: #4f9a5f;
 
-  /* Navy, gold, green, orange, then a navy/green blend for a fifth series. */
-  --chart-1: var(--brand-navy);
+  --chart-1: #2c6a3c;
   --chart-2: var(--brand-gold);
   --chart-3: var(--brand-green);
   --chart-4: var(--brand-orange);
-  --chart-5: #476d5c;
+  --chart-5: var(--brand-navy);
 
-  /* The sidebar always wears navy, in both light and dark mode; the active
-     nav item picks out gold so it pops against it. */
-  --sidebar: var(--brand-navy);
-  --sidebar-foreground: var(--brand-white);
+  /* The sidebar always wears board green, in both light and dark mode; the
+     active nav item picks out gold so it pops against it. */
+  --sidebar: #173628;
+  --sidebar-foreground: #f1f6ef;
   --sidebar-primary: var(--brand-gold);
-  --sidebar-primary-foreground: var(--brand-navy);
-  --sidebar-accent: oklch(1 0 0 / 8%);
+  --sidebar-primary-foreground: #173628;
+  --sidebar-accent: oklch(1 0 0 / 9%);
   --sidebar-accent-foreground: var(--brand-white);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: var(--brand-gold);
 }
 
 .dark {
-  /* Near-black navy, not a flat slate-gray. */
-  --background: #090f1b;
-  --foreground: #f6f7f9;
-  --card: #111b31;
-  --card-foreground: #f6f7f9;
-  --popover: #111b31;
-  --popover-foreground: #f6f7f9;
+  /* Near-black green, not a flat slate-gray. */
+  --background: #0b140f;
+  --foreground: #eef4ec;
+  --card: #121f17;
+  --card-foreground: #eef4ec;
+  --popover: #121f17;
+  --popover-foreground: #eef4ec;
 
-  /* Gold anchors dark surfaces the way navy anchors light ones. */
+  /* Gold anchors dark surfaces the way green anchors light ones. */
   --primary: var(--brand-gold);
-  --primary-foreground: var(--brand-navy);
+  --primary-foreground: #173628;
 
-  --secondary: #1e2a45;
-  --secondary-foreground: #f6f7f9;
-  --muted: #1e2a45;
-  --muted-foreground: #a9b4c9;
+  --secondary: #1b2d22;
+  --secondary-foreground: #eef4ec;
+  --muted: #1b2d22;
+  --muted-foreground: #a3b5a8;
 
-  --accent: #263455;
-  --accent-foreground: #f6f7f9;
+  --accent: #223a2b;
+  --accent-foreground: #eef4ec;
 
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
@@ -136,23 +136,21 @@
   --input: oklch(1 0 0 / 15%);
   --ring: var(--brand-gold);
 
-  --chart-1: #8794af;
+  --chart-1: #8fc48a;
   --chart-2: var(--brand-gold);
   --chart-3: #8eb678;
   --chart-4: var(--brand-orange);
-  --chart-5: #87a095;
+  --chart-5: #8794af;
 
   /* A shade darker than the dark-mode page, so the panel still reads as the
-     brand anchor the way the saturated navy does against the pale light-mode
-     page — matching it exactly here made the sidebar nearly disappear into
-     the dark background. */
-  --sidebar: #06090f;
+     brand anchor — matching the page exactly made it vanish into it. */
+  --sidebar: #08100b;
   --sidebar-foreground: var(--brand-white);
   --sidebar-primary: var(--brand-gold);
-  --sidebar-primary-foreground: var(--brand-navy);
+  --sidebar-primary-foreground: #173628;
   --sidebar-accent: oklch(1 0 0 / 10%);
   --sidebar-accent-foreground: var(--brand-white);
-  --sidebar-border: oklch(1 0 0 / 14%);
+  --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: var(--brand-gold);
 }
 
@@ -164,6 +162,50 @@
     @apply bg-background text-foreground;
     font-synthesis-weight: none;
     text-rendering: optimizeLegibility;
+    /* Light/dark toggle eases instead of snapping. */
+    transition:
+      background-color 0.25s ease,
+      color 0.25s ease;
+  }
+}
+
+/* Page change inside the dashboard shell: a short fade with a small rise. */
+.page-enter-active,
+.page-leave-active {
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
+}
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.page-leave-to {
+  opacity: 0;
+}
+
+/* One-off entrance for the sign-in form. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+.rise-in {
+  animation: rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in {
+    animation: none;
+  }
+  body,
+  .page-enter-active,
+  .page-leave-active {
+    transition: none;
+  }
+  .page-enter-from {
+    transform: none;
   }
 }
 
