@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import ResultDialog from '@/components/app/ResultDialog.vue'
+import { useResult } from '@/composables/useResult'
 import { computed, reactive, ref, watch } from 'vue'
 import {
   Ban,
   Check,
+  Copy,
   Eye,
   EyeOff,
   Loader2,
@@ -109,6 +112,8 @@ const statusVariant: Record<UserStatus, 'success' | 'warning' | 'outline'> = {
 const dialogOpen = ref(false)
 const editingId = ref<string | null>(null)
 const formError = ref('')
+const result = useResult()
+
 const saving = ref(false)
 
 const form = reactive({
@@ -165,8 +170,9 @@ async function submit() {
       await users.setStatus(editingId.value, form.status)
     }
     dialogOpen.value = false
+    result.success('Account updated', `${form.name.trim()}'s changes were saved.`)
   } catch (e) {
-    formError.value = e instanceof Error ? e.message : 'Could not save the account.'
+    result.error('Could not save the account', e)
   } finally {
     saving.value = false
   }
@@ -175,8 +181,9 @@ async function submit() {
 async function setStatus(id: string, status: UserStatus) {
   try {
     await users.setStatus(id, status)
-  } catch {
-    // no-op — the row keeps its previous status
+  } catch (e) {
+    // The row keeps its previous status.
+    result.error('Could not change the status', e)
   }
 }
 
@@ -184,8 +191,15 @@ async function setStatus(id: string, status: UserStatus) {
 const pendingDelete = ref<User | null>(null)
 
 async function confirmDelete() {
-  if (pendingDelete.value) await users.remove(pendingDelete.value.id)
+  const target = pendingDelete.value
   pendingDelete.value = null
+  if (!target) return
+  try {
+    await users.remove(target.id)
+    result.success('Account deleted', `${target.name} was removed.`)
+  } catch (e) {
+    result.error('Could not delete the account', e)
+  }
 }
 
 // --- Register teacher --------------------------------------------------------
@@ -201,7 +215,47 @@ const regShowErrors = ref(false)
 const regShowPassword = ref(false)
 const regSaving = ref(false)
 const regError = ref('')
-const regNotice = ref('')
+// Kept after submit so the admin can still copy the password that was just set.
+const createdAccount = ref<{ name: string; email: string; password: string } | null>(null)
+const credentialsCopied = ref(false)
+
+const strengthLabels = ['Enter a password', 'Weak', 'Fair', 'Good', 'Strong']
+const strengthColors = [
+  'bg-muted',
+  'bg-destructive',
+  'bg-(--brand-orange)',
+  'bg-(--brand-gold)',
+  'bg-primary',
+]
+const passwordScore = computed(() => {
+  const pw = regForm.password
+  if (!pw) return 0
+  const checks = [
+    pw.length >= PASSWORD_MIN,
+    /[a-z]/i.test(pw) && /\d/.test(pw),
+    pw.length >= 12,
+    (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) || /[^A-Za-z0-9]/.test(pw),
+  ]
+  return checks.filter(Boolean).length
+})
+
+const allGradesSelected = computed(() => regForm.gradeLevels.length === GRADE_LEVELS.length)
+function toggleAllGrades() {
+  regForm.gradeLevels = allGradesSelected.value ? [] : [...GRADE_LEVELS]
+}
+
+async function copyCredentials() {
+  if (!createdAccount.value) return
+  try {
+    await navigator.clipboard.writeText(
+      `Email: ${createdAccount.value.email}\nPassword: ${createdAccount.value.password}`,
+    )
+    credentialsCopied.value = true
+    setTimeout(() => (credentialsCopied.value = false), 2000)
+  } catch {
+    // Clipboard can be blocked; the values are visible to copy by hand.
+  }
+}
 
 watch(
   () => [regForm.fullName, regForm.school, regForm.email, regForm.password],
@@ -229,8 +283,8 @@ function fillGeneratedPassword() {
 }
 
 async function submitRegistration() {
-  regNotice.value = ''
   regError.value = ''
+  createdAccount.value = null
   regShowErrors.value = true
   regErrors.fullName = validateFullName(regForm.fullName)
   regErrors.school = validateSchool(regForm.school)
@@ -247,7 +301,11 @@ async function submitRegistration() {
       password: regForm.password,
       gradeLevels: [...regForm.gradeLevels],
     })
-    regNotice.value = `${regForm.fullName.trim()}'s account was created and is ready to sign in with the password above.`
+    createdAccount.value = {
+      name: regForm.fullName.trim(),
+      email: regForm.email.trim(),
+      password: regForm.password,
+    }
     regForm.fullName = ''
     regForm.email = ''
     regForm.password = ''
@@ -420,137 +478,260 @@ async function submitRegistration() {
     </TabsContent>
 
     <TabsContent value="register">
-      <Card class="mx-auto max-w-2xl">
-        <CardContent class="space-y-6 p-6">
-          <div class="space-y-1">
-            <h3 class="text-base font-semibold">Register a teacher</h3>
-            <p class="text-muted-foreground text-sm">
-              Creates the account directly and sets it active. Share the password below with the
-              teacher so they can sign in and change it.
-            </p>
-          </div>
-
-          <Alert v-if="regNotice" variant="success">
-            <Check />
-            <AlertDescription>{{ regNotice }}</AlertDescription>
-          </Alert>
-
-          <form class="space-y-4" novalidate @submit.prevent="submitRegistration">
-            <div class="grid gap-4 sm:grid-cols-2">
-              <div class="space-y-2">
-                <Label for="r-name">Full name</Label>
-                <Input
-                  id="r-name"
-                  v-model="regForm.fullName"
-                  autocomplete="off"
-                  :maxlength="NAME_MAX"
-                  :aria-invalid="Boolean(regErrors.fullName) || undefined"
-                  placeholder="Maria Santos"
-                />
-                <p v-if="regErrors.fullName" class="text-destructive text-xs">
-                  {{ regErrors.fullName }}
-                </p>
-              </div>
-              <div class="space-y-2">
-                <Label for="r-school">School / office</Label>
-                <Input
-                  id="r-school"
-                  v-model="regForm.school"
-                  :maxlength="SCHOOL_MAX"
-                  :aria-invalid="Boolean(regErrors.school) || undefined"
-                  placeholder="Agusan Pequeño Elementary School"
-                />
-                <p v-if="regErrors.school" class="text-destructive text-xs">
-                  {{ regErrors.school }}
-                </p>
-              </div>
+      <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
+        <Card>
+          <CardContent class="space-y-8 p-6">
+            <div class="space-y-1">
+              <h3 class="text-base font-semibold">Register a teacher</h3>
+              <p class="text-muted-foreground text-sm">
+                Creates the account directly and sets it active. Share the sign-in details with the
+                teacher so they can sign in and change the password.
+              </p>
             </div>
 
-            <div class="space-y-2">
-              <Label for="r-email">Email</Label>
-              <Input
-                id="r-email"
-                v-model="regForm.email"
-                type="email"
-                inputmode="email"
-                autocomplete="off"
-                spellcheck="false"
-                :maxlength="EMAIL_MAX"
-                :aria-invalid="Boolean(regErrors.email) || undefined"
-                placeholder="name@school.com"
-              />
-              <p v-if="regErrors.email" class="text-destructive text-xs">{{ regErrors.email }}</p>
-            </div>
-
-            <div class="space-y-2">
-              <Label for="r-password">Temporary password</Label>
-              <div class="flex gap-2">
-                <div class="relative flex-1">
-                  <Input
-                    id="r-password"
-                    v-model="regForm.password"
-                    :type="regShowPassword ? 'text' : 'password'"
-                    autocomplete="off"
-                    :minlength="PASSWORD_MIN"
-                    :maxlength="PASSWORD_MAX"
-                    :aria-invalid="Boolean(regErrors.password) || undefined"
-                    class="pr-10"
-                    placeholder="At least 8 characters, with a number"
-                  />
-                  <button
-                    type="button"
-                    class="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-md focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-                    :aria-label="regShowPassword ? 'Hide password' : 'Show password'"
-                    :aria-pressed="regShowPassword"
-                    @click="regShowPassword = !regShowPassword"
-                  >
-                    <EyeOff v-if="regShowPassword" class="size-4" />
-                    <Eye v-else class="size-4" />
-                  </button>
+            <!-- Shown after submit: the form clears, but the password stays copyable. -->
+            <div
+              v-if="createdAccount"
+              class="border-primary/30 bg-primary/8 space-y-3 rounded-lg border p-4"
+            >
+              <div class="flex items-start gap-2">
+                <Check class="text-primary mt-0.5 size-4 shrink-0" />
+                <div class="space-y-0.5">
+                  <p class="text-sm font-medium">Account created for {{ createdAccount.name }}</p>
+                  <p class="text-muted-foreground text-xs">
+                    Share these sign-in details. The password is not shown again once you close
+                    this.
+                  </p>
                 </div>
-                <Button type="button" variant="outline" @click="fillGeneratedPassword">
-                  <RefreshCw />
-                  Generate
+              </div>
+              <dl class="bg-background grid gap-1 rounded-md border px-3 py-2 text-sm">
+                <div class="flex flex-wrap justify-between gap-x-4">
+                  <dt class="text-muted-foreground">Email</dt>
+                  <dd class="font-medium break-all">{{ createdAccount.email }}</dd>
+                </div>
+                <div class="flex flex-wrap justify-between gap-x-4">
+                  <dt class="text-muted-foreground">Password</dt>
+                  <dd class="font-mono font-medium break-all">{{ createdAccount.password }}</dd>
+                </div>
+              </dl>
+              <div class="flex flex-wrap gap-2">
+                <Button type="button" size="sm" @click="copyCredentials">
+                  <Check v-if="credentialsCopied" />
+                  <Copy v-else />
+                  {{ credentialsCopied ? 'Copied' : 'Copy sign-in details' }}
+                </Button>
+                <Button type="button" size="sm" variant="ghost" @click="createdAccount = null">
+                  Done
                 </Button>
               </div>
-              <p v-if="regErrors.password" class="text-destructive text-xs">
-                {{ regErrors.password }}
-              </p>
-              <p v-else class="text-muted-foreground text-xs">
-                8–{{ PASSWORD_MAX }} characters, mixing letters and numbers.
-              </p>
             </div>
 
-            <div class="space-y-2">
-              <Label>Grade levels handled</Label>
-              <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                <label
-                  v-for="grade in GRADE_LEVELS"
-                  :key="grade"
-                  class="hover:bg-accent flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors"
-                >
-                  <Checkbox
-                    :model-value="regForm.gradeLevels.includes(grade)"
-                    @update:model-value="(v) => regToggleGrade(grade, v === true)"
+            <form class="space-y-8" novalidate @submit.prevent="submitRegistration">
+              <fieldset class="space-y-4">
+                <legend class="mb-4 text-sm font-semibold">Teacher details</legend>
+                <div class="grid gap-4 sm:grid-cols-2">
+                  <div class="space-y-2">
+                    <Label for="r-name">Full name</Label>
+                    <Input
+                      id="r-name"
+                      v-model="regForm.fullName"
+                      autocomplete="off"
+                      :maxlength="NAME_MAX"
+                      :aria-invalid="Boolean(regErrors.fullName) || undefined"
+                      placeholder="Maria Santos"
+                    />
+                    <p v-if="regErrors.fullName" class="text-destructive text-xs">
+                      {{ regErrors.fullName }}
+                    </p>
+                  </div>
+                  <div class="space-y-2">
+                    <Label for="r-school">School / office</Label>
+                    <Input
+                      id="r-school"
+                      v-model="regForm.school"
+                      :maxlength="SCHOOL_MAX"
+                      :aria-invalid="Boolean(regErrors.school) || undefined"
+                      placeholder="Agusan Pequeño Elementary School"
+                    />
+                    <p v-if="regErrors.school" class="text-destructive text-xs">
+                      {{ regErrors.school }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between gap-2">
+                    <Label>Grade levels handled</Label>
+                    <button
+                      type="button"
+                      class="text-primary hover:text-primary/80 focus-visible:ring-ring/50 rounded text-xs font-medium transition-colors focus-visible:ring-[3px] focus-visible:outline-none"
+                      @click="toggleAllGrades"
+                    >
+                      {{ allGradesSelected ? 'Clear all' : 'Select all' }}
+                    </button>
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    <button
+                      v-for="grade in GRADE_LEVELS"
+                      :key="grade"
+                      type="button"
+                      :aria-pressed="regForm.gradeLevels.includes(grade)"
+                      class="focus-visible:ring-ring/50 inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm transition-[background-color,border-color,color,transform] duration-200 outline-none focus-visible:ring-[3px] active:scale-95 motion-reduce:transition-none"
+                      :class="
+                        regForm.gradeLevels.includes(grade)
+                          ? 'border-primary bg-primary/10 text-primary font-medium'
+                          : 'hover:bg-accent'
+                      "
+                      @click="regToggleGrade(grade, !regForm.gradeLevels.includes(grade))"
+                    >
+                      <Check
+                        class="size-3.5 transition-[width,opacity] duration-200"
+                        :class="
+                          regForm.gradeLevels.includes(grade)
+                            ? 'w-3.5 opacity-100'
+                            : 'w-0 opacity-0'
+                        "
+                      />
+                      {{ grade }}
+                    </button>
+                  </div>
+                </div>
+              </fieldset>
+
+              <fieldset class="space-y-4 border-t pt-6">
+                <legend class="sr-only">Sign-in details</legend>
+                <p class="text-sm font-semibold">Sign-in details</p>
+
+                <div class="space-y-2">
+                  <Label for="r-email">Email</Label>
+                  <Input
+                    id="r-email"
+                    v-model="regForm.email"
+                    type="email"
+                    inputmode="email"
+                    autocomplete="off"
+                    spellcheck="false"
+                    :maxlength="EMAIL_MAX"
+                    :aria-invalid="Boolean(regErrors.email) || undefined"
+                    placeholder="name@school.com"
                   />
-                  {{ grade }}
-                </label>
+                  <p v-if="regErrors.email" class="text-destructive text-xs">
+                    {{ regErrors.email }}
+                  </p>
+                </div>
+
+                <div class="space-y-2">
+                  <Label for="r-password">Temporary password</Label>
+                  <div class="flex gap-2">
+                    <div class="relative flex-1">
+                      <Input
+                        id="r-password"
+                        v-model="regForm.password"
+                        :type="regShowPassword ? 'text' : 'password'"
+                        autocomplete="off"
+                        :minlength="PASSWORD_MIN"
+                        :maxlength="PASSWORD_MAX"
+                        :aria-invalid="Boolean(regErrors.password) || undefined"
+                        class="pr-10"
+                        placeholder="At least 8 characters, with a number"
+                      />
+                      <button
+                        type="button"
+                        class="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-md transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                        :aria-label="regShowPassword ? 'Hide password' : 'Show password'"
+                        :aria-pressed="regShowPassword"
+                        @click="regShowPassword = !regShowPassword"
+                      >
+                        <Eye v-if="regShowPassword" class="size-4" />
+                        <EyeOff v-else class="size-4" />
+                      </button>
+                    </div>
+                    <Button type="button" variant="outline" @click="fillGeneratedPassword">
+                      <RefreshCw />
+                      Generate
+                    </Button>
+                  </div>
+
+                  <div class="flex items-center gap-3 pt-1" aria-live="polite">
+                    <div class="grid flex-1 grid-cols-4 gap-1.5">
+                      <span
+                        v-for="n in 4"
+                        :key="n"
+                        class="h-1.5 rounded-full transition-colors duration-300"
+                        :class="n <= passwordScore ? strengthColors[passwordScore] : 'bg-muted'"
+                      />
+                    </div>
+                    <span class="text-muted-foreground w-28 text-right text-xs">
+                      {{ strengthLabels[passwordScore] }}
+                    </span>
+                  </div>
+                  <p v-if="regErrors.password" class="text-destructive text-xs">
+                    {{ regErrors.password }}
+                  </p>
+                  <p v-else class="text-muted-foreground text-xs">
+                    8–{{ PASSWORD_MAX }} characters, mixing letters and numbers.
+                  </p>
+                </div>
+              </fieldset>
+
+              <Alert v-if="regError" variant="destructive">
+                <Ban />
+                <AlertDescription>{{ regError }}</AlertDescription>
+              </Alert>
+
+              <Button type="submit" size="lg" class="w-full sm:w-auto" :disabled="regSaving">
+                <Loader2 v-if="regSaving" class="animate-spin" />
+                <UserPlus v-else />
+                {{ regSaving ? 'Creating account…' : 'Register teacher' }}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <!-- Live preview of the account being created. -->
+        <aside class="lg:sticky lg:top-24">
+          <Card class="gap-0 py-0">
+            <CardContent class="space-y-4 p-5">
+              <p class="text-muted-foreground text-xs font-medium">Account preview</p>
+              <div class="flex items-center gap-3">
+                <Avatar class="size-12">
+                  <AvatarFallback class="bg-primary/10 text-primary text-base">
+                    {{ regForm.fullName.trim() ? initials(regForm.fullName) : '?' }}
+                  </AvatarFallback>
+                </Avatar>
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-semibold">
+                    {{ regForm.fullName.trim() || 'Teacher name' }}
+                  </p>
+                  <p class="text-muted-foreground truncate text-xs">
+                    {{ regForm.email.trim() || 'name@school.com' }}
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <Alert v-if="regError" variant="destructive">
-              <Ban />
-              <AlertDescription>{{ regError }}</AlertDescription>
-            </Alert>
+              <div class="flex flex-wrap gap-1.5">
+                <Badge variant="secondary">Teacher</Badge>
+                <Badge variant="success">Active on creation</Badge>
+              </div>
 
-            <Button type="submit" :disabled="regSaving">
-              <Loader2 v-if="regSaving" class="animate-spin" />
-              <UserPlus v-else />
-              {{ regSaving ? 'Creating account…' : 'Register teacher' }}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <dl class="space-y-3 border-t pt-4 text-sm">
+                <div>
+                  <dt class="text-muted-foreground text-xs">School</dt>
+                  <dd class="font-medium">{{ regForm.school.trim() || '—' }}</dd>
+                </div>
+                <div>
+                  <dt class="text-muted-foreground text-xs">Grade levels</dt>
+                  <dd class="font-medium">
+                    {{
+                      regForm.gradeLevels.length ? regForm.gradeLevels.join(', ') : 'None selected'
+                    }}
+                  </dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
+        </aside>
+      </div>
     </TabsContent>
   </Tabs>
 
@@ -657,4 +838,11 @@ async function submitRegistration() {
       </DialogFooter>
     </DialogContent>
   </Dialog>
+
+  <ResultDialog
+    v-model:open="result.state.open"
+    :kind="result.state.kind"
+    :title="result.state.title"
+    :description="result.state.description"
+  />
 </template>

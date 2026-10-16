@@ -25,7 +25,11 @@ const router = createRouter({
       path: '/',
       name: 'landing',
       component: () => import('@/views/LandingView.vue'),
+<<<<<<< HEAD
       meta: { public: true, title: 'Welcome' },
+=======
+      meta: { public: true },
+>>>>>>> eac4199a1d51e5693e9998e10c4381c43ee9545f
     },
     {
       path: '/login',

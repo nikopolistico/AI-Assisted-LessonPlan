@@ -29,7 +29,7 @@ export default async function handler(request: Request): Promise<Response> {
   }
   if (!Array.isArray(body.messages)) return json(400, { error: 'Missing "messages" array.' })
 
-  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
+  const model = process.env.OPENAI_MODEL
   const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '')
   const host = new URL(baseUrl).hostname
   const isNativeOpenAI = /(^|\.)api\.openai\.com$/.test(host)

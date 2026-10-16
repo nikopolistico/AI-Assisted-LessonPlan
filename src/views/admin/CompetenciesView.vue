@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ResultDialog from '@/components/app/ResultDialog.vue'
+import { useResult } from '@/composables/useResult'
 import { computed, reactive, ref } from 'vue'
 import { BookOpen, MoreHorizontal, Pencil, Plus, Search, Trash2 } from 'lucide-vue-next'
 import PageHeader from '@/components/app/PageHeader.vue'
@@ -120,6 +122,8 @@ function openEdit(item: Competency) {
   dialogOpen.value = true
 }
 
+const result = useResult()
+
 const saving = ref(false)
 
 async function submit() {
@@ -150,8 +154,12 @@ async function submit() {
     if (editingId.value) await catalog.updateCompetency(editingId.value, payload)
     else await catalog.addCompetency(payload)
     dialogOpen.value = false
+    result.success(
+      editingId.value ? 'Competency updated' : 'Competency added',
+      `${payload.code} was saved.`,
+    )
   } catch (e) {
-    formError.value = e instanceof Error ? e.message : 'Could not save the competency.'
+    result.error('Could not save the competency', e)
   } finally {
     saving.value = false
   }
@@ -160,16 +168,24 @@ async function submit() {
 async function toggleActive(item: Competency) {
   try {
     await catalog.updateCompetency(item.id, { active: !item.active })
-  } catch {
+  } catch (e) {
     // The row keeps its previous state on failure.
+    result.error('Could not update the competency', e)
   }
 }
 
 const pendingDelete = ref<Competency | null>(null)
 
 async function confirmDelete() {
-  if (pendingDelete.value) await catalog.removeCompetency(pendingDelete.value.id)
+  const target = pendingDelete.value
   pendingDelete.value = null
+  if (!target) return
+  try {
+    await catalog.removeCompetency(target.id)
+    result.success('Competency deleted', `${target.code} was removed.`)
+  } catch (e) {
+    result.error('Could not delete the competency', e)
+  }
 }
 </script>
 
@@ -388,4 +404,11 @@ async function confirmDelete() {
       </DialogFooter>
     </DialogContent>
   </Dialog>
+
+  <ResultDialog
+    v-model:open="result.state.open"
+    :kind="result.state.kind"
+    :title="result.state.title"
+    :description="result.state.description"
+  />
 </template>

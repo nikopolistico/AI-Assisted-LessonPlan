@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ResultDialog from '@/components/app/ResultDialog.vue'
+import { useResult } from '@/composables/useResult'
 import { computed, reactive, ref } from 'vue'
 import {
   GripVertical,
@@ -92,6 +94,8 @@ function move(index: number, delta: number) {
   list[target] = item
 }
 
+const result = useResult()
+
 const saving = ref(false)
 
 async function submit() {
@@ -120,8 +124,12 @@ async function submit() {
     if (editingId.value) await catalog.updateTemplate(editingId.value, payload)
     else await catalog.addTemplate(payload)
     dialogOpen.value = false
+    result.success(
+      editingId.value ? 'Template updated' : 'Template added',
+      `${payload.name} was saved.`,
+    )
   } catch (e) {
-    formError.value = e instanceof Error ? e.message : 'Could not save the template.'
+    result.error('Could not save the template', e)
   } finally {
     saving.value = false
   }
@@ -130,24 +138,32 @@ async function submit() {
 async function makeDefault(id: string) {
   try {
     await catalog.makeDefault(id)
-  } catch {
-    // no-op — the current default stays in place
+  } catch (e) {
+    // The current default stays in place.
+    result.error('Could not change the default template', e)
   }
 }
 
 async function toggleActive(template: LessonTemplate) {
   try {
     await catalog.updateTemplate(template.id, { active: !template.active })
-  } catch {
-    // no-op
+  } catch (e) {
+    result.error('Could not update the template', e)
   }
 }
 
 const pendingDelete = ref<LessonTemplate | null>(null)
 
 async function confirmDelete() {
-  if (pendingDelete.value) await catalog.removeTemplate(pendingDelete.value.id)
+  const target = pendingDelete.value
   pendingDelete.value = null
+  if (!target) return
+  try {
+    await catalog.removeTemplate(target.id)
+    result.success('Template deleted', `${target.name} was removed.`)
+  } catch (e) {
+    result.error('Could not delete the template', e)
+  }
 }
 </script>
 
@@ -362,4 +378,11 @@ async function confirmDelete() {
       </DialogFooter>
     </DialogContent>
   </Dialog>
+
+  <ResultDialog
+    v-model:open="result.state.open"
+    :kind="result.state.kind"
+    :title="result.state.title"
+    :description="result.state.description"
+  />
 </template>

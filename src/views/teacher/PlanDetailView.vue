@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ResultDialog from '@/components/app/ResultDialog.vue'
+import { useResult } from '@/composables/useResult'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import {
@@ -57,6 +59,8 @@ const editing = ref(false)
 const savedAt = ref<string | null>(null)
 const confirmRegenerate = ref(false)
 const documentEl = ref<InstanceType<typeof LessonPlanDocument> | null>(null)
+const result = useResult()
+
 const exportingPdf = ref(false)
 
 // Regenerating or navigating replaces the plan, so drop any open editor.
@@ -72,15 +76,24 @@ const minutesOff = computed(() => (plan.value ? totalMinutes.value - plan.value.
 
 async function applyEdits(patch: Partial<LessonPlan>) {
   if (!plan.value) return
-  await plans.update(plan.value.id, patch)
-  savedAt.value = new Date().toISOString()
-  editing.value = false
+  try {
+    await plans.update(plan.value.id, patch)
+    savedAt.value = new Date().toISOString()
+    editing.value = false
+    result.success('Lesson plan saved', 'Your edits were saved.')
+  } catch (e) {
+    result.error('Could not save the lesson plan', e)
+  }
 }
 
 async function setStatus(status: PlanStatus) {
   if (!plan.value) return
-  await plans.update(plan.value.id, { status })
-  savedAt.value = new Date().toISOString()
+  try {
+    await plans.update(plan.value.id, { status })
+    savedAt.value = new Date().toISOString()
+  } catch (e) {
+    result.error('Could not change the status', e)
+  }
 }
 
 async function regenerate() {
@@ -408,4 +421,11 @@ function download(kind: 'txt' | 'md' | 'json') {
       </DialogContent>
     </Dialog>
   </template>
+
+  <ResultDialog
+    v-model:open="result.state.open"
+    :kind="result.state.kind"
+    :title="result.state.title"
+    :description="result.state.description"
+  />
 </template>

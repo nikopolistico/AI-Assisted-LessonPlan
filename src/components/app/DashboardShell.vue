@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun, X } from 'lucide-vue-next'
 import LogoMark from './LogoMark.vue'
@@ -52,6 +52,10 @@ function isActive(item: NavItem) {
   return item.exact ? route.path === item.to : route.path.startsWith(item.to)
 }
 
+// Each nav row is h-10 with a 4px gap, so the pill's offset is just index * 44.
+const NAV_STEP = 44
+const activeIndex = computed(() => props.nav.findIndex(isActive))
+
 const signOutOpen = ref(false)
 
 async function confirmSignOut() {
@@ -66,7 +70,11 @@ async function confirmSignOut() {
   <div class="bg-background min-h-screen">
     <!-- Sidebar -->
     <aside
+<<<<<<< HEAD
       class="bg-sidebar text-sidebar-foreground border-sidebar-border fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r transition-[width,transform] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none lg:translate-x-0"
+=======
+      class="bg-sidebar text-sidebar-foreground border-sidebar-border fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r transition-[width,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:translate-x-0"
+>>>>>>> eac4199a1d51e5693e9998e10c4381c43ee9545f
       :class="[
         mobileOpen ? 'translate-x-0' : '-translate-x-full',
         collapsed ? 'lg:w-16' : 'lg:w-64',
@@ -110,42 +118,55 @@ async function confirmSignOut() {
 
       <Separator class="bg-sidebar-border" />
 
-      <nav class="flex-1 space-y-1 overflow-y-auto p-3" :class="collapsed && 'lg:px-2'">
-        <RouterLink
-          v-for="item in props.nav"
-          :key="item.to"
-          :to="item.to"
-          :title="collapsed ? item.label : undefined"
-          class="group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
-          :class="[
-            isActive(item)
-              ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-xs'
-              : 'text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-            collapsed && 'lg:justify-center lg:px-0',
-          ]"
-        >
-          <component :is="item.icon" class="size-4 shrink-0" />
-          <span class="truncate" :class="collapsed && 'lg:hidden'">{{ item.label }}</span>
-
-          <Badge
-            v-if="item.badge"
-            :variant="isActive(item) ? 'secondary' : 'warning'"
-            class="ml-auto tabular-nums"
+      <nav class="flex-1 overflow-y-auto p-3" :class="collapsed && 'lg:px-2'">
+        <div class="relative space-y-1">
+          <!-- One pill that slides to the active item instead of each row snapping. -->
+          <span
+            aria-hidden="true"
+            class="bg-sidebar-primary pointer-events-none absolute inset-x-0 top-0 h-10 rounded-md shadow-xs transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+            :class="activeIndex < 0 && 'opacity-0'"
+            :style="{ transform: `translateY(${Math.max(activeIndex, 0) * NAV_STEP}px)` }"
+          />
+          <RouterLink
+            v-for="item in props.nav"
+            :key="item.to"
+            :to="item.to"
+            :title="collapsed ? item.label : undefined"
+            class="group relative flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition-[color,background-color,transform] duration-200 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             :class="[
-              collapsed && 'lg:hidden',
               isActive(item)
-                ? 'bg-white/15 text-white'
-                : 'bg-(--brand-gold)/15 text-(--brand-gold)',
+                ? 'text-sidebar-primary-foreground'
+                : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+              collapsed && 'lg:justify-center lg:gap-0 lg:px-0',
             ]"
           >
-            {{ item.badge }}
-          </Badge>
-          <!-- The count has no room on the rail, so it becomes a dot. -->
-          <span
-            v-if="item.badge && collapsed"
-            class="absolute top-1 right-1 hidden size-1.5 rounded-full bg-(--brand-gold) lg:block"
-          />
-        </RouterLink>
+            <component :is="item.icon" class="size-4 shrink-0" />
+            <span
+              class="truncate transition-[opacity,width] duration-200"
+              :class="collapsed && 'lg:w-0 lg:opacity-0'"
+              >{{ item.label }}</span
+            >
+
+            <Badge
+              v-if="item.badge"
+              :variant="isActive(item) ? 'secondary' : 'warning'"
+              class="ml-auto tabular-nums"
+              :class="[
+                collapsed && 'lg:hidden',
+                isActive(item)
+                  ? 'bg-sidebar-primary-foreground/15 text-sidebar-primary-foreground'
+                  : 'bg-(--brand-gold)/15 text-(--brand-gold)',
+              ]"
+            >
+              {{ item.badge }}
+            </Badge>
+            <!-- The count has no room on the rail, so it becomes a dot. -->
+            <span
+              v-if="item.badge && collapsed"
+              class="absolute top-1 right-1 hidden size-1.5 rounded-full bg-(--brand-gold) lg:block"
+            />
+          </RouterLink>
+        </div>
       </nav>
 
       <div
@@ -174,7 +195,9 @@ async function confirmSignOut() {
     />
 
     <!-- Main -->
-    <div class="transition-[padding] duration-200" :class="collapsed ? 'lg:pl-16' : 'lg:pl-64'">
+    <div
+      class="transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+      :class="collapsed ? 'lg:pl-16' : 'lg:pl-64'">
       <header
         class="bg-background/85 sticky top-0 z-30 flex h-16 items-center gap-3 border-b px-4 backdrop-blur sm:px-6 no-print"
       >
@@ -231,7 +254,14 @@ async function confirmSignOut() {
       </header>
 
       <main class="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
-        <RouterView />
+        <RouterView v-slot="{ Component, route: current }">
+          <Transition name="page" mode="out-in">
+            <!-- Views have several root nodes, and Transition needs exactly one. -->
+            <div :key="current.path" class="space-y-6">
+              <component :is="Component" />
+            </div>
+          </Transition>
+        </RouterView>
       </main>
     </div>
 
