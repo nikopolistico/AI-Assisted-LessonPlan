@@ -80,14 +80,10 @@ const filtered = computed(() => {
   })
 })
 
-<<<<<<< HEAD
 // --- Delete flow: confirm → deleting → deleted | failed -----------------------
-// The plan stays in `pendingDelete` while the dialog closes, so its title doesn't
-// blank out mid-animation; `deleteOpen` alone drives visibility.
 type DeleteState = 'confirm' | 'deleting' | 'deleted' | 'failed'
-=======
+
 const result = useResult()
->>>>>>> eac4199a1d51e5693e9998e10c4381c43ee9545f
 
 const pendingDelete = ref<LessonPlan | null>(null)
 const deleteOpen = ref(false)
@@ -108,7 +104,6 @@ function onDeleteOpenChange(open: boolean) {
 }
 
 async function confirmDelete() {
-<<<<<<< HEAD
   if (!pendingDelete.value) return
   deleteState.value = 'deleting'
   deleteError.value = ''
@@ -121,16 +116,6 @@ async function confirmDelete() {
   } catch (e) {
     deleteError.value = e instanceof Error ? e.message : 'Something went wrong. Please try again.'
     deleteState.value = 'failed'
-=======
-  const target = pendingDelete.value
-  pendingDelete.value = null
-  if (!target) return
-  try {
-    await plans.remove(target.id)
-    result.success('Lesson plan deleted', `“${target.title}” was removed.`)
-  } catch (e) {
-    result.error('Could not delete the lesson plan', e)
->>>>>>> eac4199a1d51e5693e9998e10c4381c43ee9545f
   }
 }
 
