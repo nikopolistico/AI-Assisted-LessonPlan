@@ -17,13 +17,19 @@ export const homeFor = (role: Role | null) =>
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  scrollBehavior: () => ({ top: 0 }),
+  // In-page anchors (the landing page nav) glide to their section; the sticky
+  // header's height is left clear via `scroll-mt-*` on each section.
+  scrollBehavior: (to) => (to.hash ? { el: to.hash, behavior: 'smooth' } : { top: 0 }),
   routes: [
     {
       path: '/',
       name: 'landing',
       component: () => import('@/views/LandingView.vue'),
+<<<<<<< HEAD
+      meta: { public: true, title: 'Welcome' },
+=======
       meta: { public: true },
+>>>>>>> eac4199a1d51e5693e9998e10c4381c43ee9545f
     },
     {
       path: '/login',
@@ -117,8 +123,10 @@ router.beforeEach(async (to) => {
   await auth.ensureReady()
 
   if (to.meta.public) {
-    // A signed-in user landing on /login goes straight to their own workspace.
-    if (to.name === 'login' && auth.isAuthenticated) return homeFor(auth.role)
+    // A signed-in user opening the landing page or /login goes straight to their own workspace.
+    if ((to.name === 'landing' || to.name === 'login') && auth.isAuthenticated) {
+      return homeFor(auth.role)
+    }
     return true
   }
 

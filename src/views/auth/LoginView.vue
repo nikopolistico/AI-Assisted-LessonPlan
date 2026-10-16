@@ -88,6 +88,14 @@ async function submit() {
 
     <!-- Form panel -->
     <div class="bg-background flex items-center justify-center px-4 py-10 sm:px-6 lg:py-16">
+<<<<<<< HEAD
+      <div class="w-full max-w-sm space-y-6">
+        <RouterLink
+          to="/"
+          class="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+        >
+          <ArrowLeft class="size-4" />
+=======
       <div class="rise-in w-full max-w-sm space-y-6">
         <RouterLink
           to="/"
@@ -96,6 +104,7 @@ async function submit() {
           <ArrowLeft
             class="size-4 transition-transform duration-200 group-hover:-translate-x-0.5 motion-reduce:transition-none"
           />
+>>>>>>> eac4199a1d51e5693e9998e10c4381c43ee9545f
           Back to home
         </RouterLink>
 

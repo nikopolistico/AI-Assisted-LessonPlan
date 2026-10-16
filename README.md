@@ -1,14 +1,125 @@
-# Lesson Plan AI
+# 📘 Lesson Plan AI
 
-A Vue 3 prototype of an AI-assisted Mathematics lesson plan generator for DepEd teachers, built
-around the two actors in the use case document: the **Teacher** (primary user) and the **Admin**.
+> An AI-assisted Mathematics lesson plan generator for DepEd teachers.
 
-Stack: Vue 3 + TypeScript, Vite, Pinia, Vue Router, Tailwind CSS v4 and shadcn-vue components
-(reka-ui primitives, lucide icons).
+![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vuedotjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646cff?logo=vite&logoColor=white)
+![Tailwind](https://img.shields.io/badge/Tailwind-v4-06b6d4?logo=tailwindcss&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3ecf8e?logo=supabase&logoColor=white)
 
-## Actors and screens
+Built around two actors: the 👩‍🏫 **Teacher** (primary user) and the 🛠️ **Admin**.
 
-### Teacher
+## 📑 Contents
+
+- [✨ Features](#-features)
+- [🚀 Getting started](#-getting-started)
+- [📖 User guide](#-user-guide)
+- [🗺️ Actors and screens](#️-actors-and-screens)
+- [🗄️ Supabase](#️-supabase)
+- [🤖 AI lesson generation](#-ai-lesson-generation)
+
+## ✨ Features
+
+- 🤖 AI-generated lesson plans aligned to DepEd MELCs
+- ✏️ Edit, regenerate and keep revision history of every plan
+- 📄 Download plans as PDF or print them
+- 👥 Admin tools for users, competencies, templates and usage reports
+- 🔐 Role-based access with Supabase Auth and Row Level Security
+
+## 🚀 Getting started
+
+**Requirements:** 📦 Node.js `^22.18` or `>=24.12`, a free [Supabase](https://supabase.com) project,
+and an OpenAI-compatible API key.
+
+**1. 📥 Clone the repository**
+
+```sh
+git clone https://github.com/nikopolistico/AI-Assisted-LessonPlan.git
+cd AI-Assisted-LessonPlan
+```
+
+**2. 📦 Install dependencies**
+
+```sh
+npm install
+```
+
+**3. 🗄️ Set up the database** — paste `supabase/setup.sql` into the Supabase **SQL Editor** and run it
+(details in [Supabase](#️-supabase)).
+
+**4. 🔑 Configure environment variables** — create `.env.local` in the project root:
+
+```sh
+cp .env.example .env.local
+```
+
+```env
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-or-publishable-key
+OPENAI_API_KEY=your-api-key
+```
+
+**5. ▶️ Run the app**
+
+```sh
+npm run dev
+```
+
+Open the URL shown in the terminal (usually <http://localhost:5173>). 🎉
+
+| Command           | What it does                  |
+| ----------------- | ----------------------------- |
+| `npm run dev`     | 🧪 Start the dev server        |
+| `npm run build`   | 🏗️ Type-check and build        |
+| `npm run preview` | 👀 Preview the production build |
+| `npm run lint`    | 🧹 oxlint + eslint             |
+| `npm run format`  | 💅 Prettier                    |
+
+## 📖 User guide
+
+### 👩‍🏫 For teachers
+
+1. **📝 Create an account** — on the sign-in page click **Create an account**, fill in the form, then
+   click the confirmation link sent to your email.
+2. **🔓 Sign in** at `/login` with your email and password. You land on your dashboard.
+3. **⚡ Generate a lesson plan** — open **Generate** and fill in:
+   - 📌 Topic
+   - 🎯 MELC (competency) — filtered by grade level and quarter
+   - 🎓 Grade level, 📅 quarter and ⏱️ duration
+   - 🧩 Lesson template
+   - 💬 Optional notes
+
+   Click **Generate** and wait a few seconds — you are taken to the new plan.
+4. **👁️ Review** the plan: objectives, materials and each timed lesson section.
+5. **✏️ Edit** any part, then save.
+6. **🔄 Regenerate** if you want a fresh version. The previous version is kept as a revision.
+7. **💾 Save / Download** as a PDF, or print it.
+8. **📚 My lesson plans** lists everything you have made; open, update or delete any plan.
+
+### 🛠️ For administrators
+
+1. **🔑 Become an admin** — sign up like a teacher, then run this once in the Supabase SQL Editor:
+   ```sql
+   select public.promote_to_admin('your-email@example.com');
+   ```
+2. **👥 Users** — approve accounts, change roles, disable users.
+3. **🎯 Competencies** — add or import MELCs per grade, quarter and domain.
+4. **🧩 Templates** — manage lesson sections, set the default template, activate or deactivate.
+5. **📊 Reports** — usage by grade, domain and teacher, with CSV export.
+
+### 🆘 Troubleshooting
+
+| Problem                          | Fix                                                                  |
+| -------------------------------- | -------------------------------------------------------------------- |
+| ❌ Can't sign in after signing up | Confirm your email first (check spam)                                 |
+| ❌ Generation fails               | Check `OPENAI_API_KEY` in `.env.local`, then restart `npm run dev`    |
+| ❌ Blank data / auth errors       | Verify `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, and that `setup.sql` ran |
+| 🚫 Redirected away from `/admin`  | Your account is not an admin yet — see the admin steps above          |
+
+## 🗺️ Actors and screens
+
+### 👩‍🏫 Teacher
 
 | Use case                       | Where                                                     |
 | ------------------------------ | --------------------------------------------------------- |
@@ -21,7 +132,7 @@ Stack: Vue 3 + TypeScript, Vite, Pinia, Vue Router, Tailwind CSS v4 and shadcn-v
 | Save / download lesson plan    | `/teacher/plans/:id` → **Save / Download** (print, .txt, .md, .json) |
 | —                              | `/teacher` dashboard and `/teacher/plans` list             |
 
-### Admin
+### 🛠️ Admin
 
 | Use case                  | Where                  |
 | ------------------------- | ---------------------- |
@@ -35,14 +146,14 @@ Stack: Vue 3 + TypeScript, Vite, Pinia, Vue Router, Tailwind CSS v4 and shadcn-v
 Routes are guarded by role: a teacher who opens an `/admin` URL is sent back to their own workspace,
 and signed-out visitors are redirected to `/login` with a return path.
 
-## Accounts
+## 🔐 Accounts
 
 Authentication is Supabase Auth (email + password). Teachers register from the **Create an account**
 link on the sign-in screen and are active straight away (no approval step). Bootstrap the first
 administrator by creating an account, then running
 `select public.promote_to_admin('<email>');` in the Supabase SQL Editor (see below).
 
-## Data
+## 💾 Data
 
 Supabase is the single source of truth. The Pinia stores in `src/stores/` read and write the tables
 and RPCs defined in `supabase/` — `auth` uses Supabase Auth and `public.users`, `plans` calls
@@ -51,20 +162,12 @@ account rows. Row/function types are in `src/lib/database.types.ts` and the snak
 mappers in `src/lib/mappers.ts`. Only UI preferences (theme, sidebar state) still use `localStorage`.
 `GRADE_LEVELS` and `DURATIONS` in `src/data/seed.ts` are static option lists.
 
-## Project setup
+## 🧰 Editor setup
 
-```sh
-npm install
-npm run dev        # start the dev server
-npm run build      # type-check and build for production
-npm run lint       # oxlint + eslint
-npm run format     # prettier
-```
-
-Recommended editor setup: [VS Code](https://code.visualstudio.com/) with
+Recommended: [VS Code](https://code.visualstudio.com/) with
 [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar), and disable Vetur.
 
-## Supabase
+## 🗄️ Supabase
 
 All the SQL is one file:
 
@@ -154,7 +257,7 @@ const { data, error } = await supabase.rpc('generate_lesson_plan', {
 The stores in `src/stores/` call these directly — `usePlansStore().generate()` wraps
 `generate_lesson_plan`, and so on.
 
-## AI lesson generation
+## 🤖 AI lesson generation
 
 `src/lib/openai.ts` builds the prompt and calls `/api/lesson-plan` — a Vercel Edge Function
 (`api/lesson-plan.ts`) that forwards to an OpenAI-compatible `/chat/completions` endpoint. The
