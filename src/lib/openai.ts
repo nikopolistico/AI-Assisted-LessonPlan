@@ -11,7 +11,7 @@
 import type { Competency, LessonRequest, LessonSection, LessonTemplate } from '@/types'
 
 /** The model id the generator talks to — shown on the Generate screen. */
-export const generatorModel = (import.meta.env.VITE_OPENAI_MODEL as string | undefined) || 'gpt-4o-mini'
+export const generatorModel = (import.meta.env.VITE_OPENAI_MODEL as string | undefined) || 'liquid/lfm-2.5-2.6b:free'
 
 export interface LessonPlanContent {
   title: string
