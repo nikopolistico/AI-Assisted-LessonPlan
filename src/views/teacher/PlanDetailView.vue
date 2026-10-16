@@ -118,7 +118,7 @@ async function downloadPdf() {
     .toLowerCase()
   exportingPdf.value = true
   try {
-    await downloadElementAsPdf(el, `${name}.pdf`)
+    await downloadElementAsPdf(el, `${name}.pdf`, current.title)
   } finally {
     exportingPdf.value = false
   }
