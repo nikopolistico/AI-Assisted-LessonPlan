@@ -231,9 +231,8 @@
 }
 
 /*
- * Holds the print/PDF document off-screen (not display:none, so html2canvas can
- * still rasterise it for the Download PDF button) until an actual print happens,
- * at which point it flows into the page like normal content.
+ * Holds the print document off-screen until an actual print happens, at which
+ * point it flows into the page like normal content.
  */
 .print-doc {
   position: absolute;

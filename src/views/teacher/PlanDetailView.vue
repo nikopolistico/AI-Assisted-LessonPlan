@@ -42,7 +42,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { useAuthStore } from '@/stores/auth'
 import { formatDateTime, romanQuarter } from '@/lib/format'
 import { planToText } from '@/lib/export'
-import { downloadElementAsPdf } from '@/lib/pdf'
+import { downloadPlanAsPdf } from '@/lib/pdf'
 
 const route = useRoute()
 const plans = usePlansStore()
@@ -58,10 +58,7 @@ const competency = computed(() =>
 const editing = ref(false)
 const savedAt = ref<string | null>(null)
 const confirmRegenerate = ref(false)
-const documentEl = ref<InstanceType<typeof LessonPlanDocument> | null>(null)
 const result = useResult()
-
-const exportingPdf = ref(false)
 
 // Regenerating or navigating replaces the plan, so drop any open editor.
 watch(planId, () => {
@@ -108,20 +105,22 @@ function printPlan() {
   window.print()
 }
 
-async function downloadPdf() {
+function downloadPdf() {
   const current = plan.value
-  const el = documentEl.value?.$el as HTMLElement | undefined
-  if (!current || !el) return
+  if (!current) return
   const name = current.title
     .replace(/[^a-z0-9]+/gi, '-')
     .replace(/^-|-$/g, '')
     .toLowerCase()
-  exportingPdf.value = true
-  try {
-    await downloadElementAsPdf(el, `${name}.pdf`, current.title)
-  } finally {
-    exportingPdf.value = false
-  }
+  downloadPlanAsPdf(
+    {
+      plan: current,
+      competency: competency.value,
+      teacherName: auth.currentUser?.name ?? '',
+      school: auth.currentUser?.school ?? '',
+    },
+    `${name}.pdf`,
+  )
 }
 
 function download(kind: 'txt' | 'md' | 'json') {
@@ -209,9 +208,8 @@ function download(kind: 'txt' | 'md' | 'json') {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" class="w-52">
-              <DropdownMenuItem :disabled="exportingPdf" @select="downloadPdf">
-                <Loader2 v-if="exportingPdf" class="animate-spin" />
-                <Download v-else />
+              <DropdownMenuItem @select="downloadPdf">
+                <Download />
                 Download PDF
               </DropdownMenuItem>
               <DropdownMenuItem @select="printPlan">
@@ -394,7 +392,6 @@ function download(kind: 'txt' | 'md' | 'json') {
     <!-- Print / PDF document: off-screen until an actual print or PDF export. -->
     <div class="print-doc">
       <LessonPlanDocument
-        ref="documentEl"
         :plan="plan"
         :competency="competency"
         :teacher-name="auth.currentUser?.name ?? ''"
