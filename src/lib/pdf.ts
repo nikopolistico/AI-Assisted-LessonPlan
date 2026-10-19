@@ -32,7 +32,7 @@ export async function downloadElementAsPdf(el: HTMLElement, filename: string, fo
   let canvas: HTMLCanvasElement
   let breaksPx: number[]
   try {
-    canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff' })
+    canvas = await html2canvas(el, { scale: 2 })
     const top = el.getBoundingClientRect().top
     const ratio = canvas.width / el.getBoundingClientRect().width
     breaksPx = [...el.querySelectorAll(BREAK_SELECTOR)].map(
