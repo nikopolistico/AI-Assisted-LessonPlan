@@ -32,7 +32,18 @@ export async function downloadElementAsPdf(el: HTMLElement, filename: string, fo
   let canvas: HTMLCanvasElement
   let breaksPx: number[]
   try {
-    canvas = await html2canvas(el, { scale: 2 })
+    canvas = await html2canvas(el, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      scrollX: 0,
+      scrollY: 0,
+      // The live copy sits at left:-10000px; bring the clone into view so it is
+      // not clipped away by the production page's overflow rules (blank PDF).
+      onclone: (doc) => {
+        const holder = doc.querySelector<HTMLElement>('.print-doc')
+        if (holder) holder.style.left = '0'
+      },
+    })
     const top = el.getBoundingClientRect().top
     const ratio = canvas.width / el.getBoundingClientRect().width
     breaksPx = [...el.querySelectorAll(BREAK_SELECTOR)].map(
