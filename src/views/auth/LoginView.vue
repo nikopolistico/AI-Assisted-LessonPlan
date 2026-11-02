@@ -2,6 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { AlertCircle, ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-vue-next'
+import backgroundUrl from '@/assets/images/background.jpg'
 import logoUrl from '@/assets/images/logo.png'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -45,13 +46,30 @@ async function submit() {
 </script>
 
 <template>
-  <div class="grid min-h-screen lg:grid-cols-2">
+  <div class="relative grid min-h-screen lg:grid-cols-2">
+    <!-- School photo — behind the whole page on mobile, the brand panel on desktop. -->
+    <img
+      :src="backgroundUrl"
+      alt=""
+      aria-hidden="true"
+      class="pointer-events-none absolute inset-y-0 left-0 size-full object-cover select-none lg:w-1/2"
+    />
+    <div
+      aria-hidden="true"
+      class="pointer-events-none absolute inset-y-0 left-0 w-full lg:w-1/2"
+      style="
+        background: linear-gradient(
+          180deg,
+          rgb(17 42 30 / 0.75) 0%,
+          rgb(17 42 30 / 0.6) 45%,
+          rgb(17 42 30 / 0.9) 100%
+        );
+      "
+    />
+
     <!-- Brand panel — desktop only. The form panel carries its own compact -->
     <!-- lockup on mobile instead of squeezing this in above the fold. -->
-    <div
-      class="relative hidden flex-col justify-between overflow-hidden p-10 text-white lg:flex"
-      style="background: radial-gradient(circle at 25% 15%, #2f6a45 0%, #112a1e 75%)"
-    >
+    <div class="relative hidden flex-col justify-between overflow-hidden p-10 text-white lg:flex">
       <img
         :src="logoUrl"
         alt=""
@@ -87,8 +105,12 @@ async function submit() {
     </div>
 
     <!-- Form panel -->
-    <div class="bg-background flex items-center justify-center px-4 py-10 sm:px-6 lg:py-16">
-      <div class="rise-in w-full max-w-sm space-y-6">
+    <div
+      class="lg:bg-background relative flex items-center justify-center px-4 py-10 sm:px-6 lg:py-16"
+    >
+      <div
+        class="rise-in bg-background w-full max-w-sm space-y-6 rounded-2xl p-6 shadow-lg lg:rounded-none lg:bg-transparent lg:p-0 lg:shadow-none"
+      >
         <RouterLink
           to="/"
           class="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 group -ml-1 inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-sm font-medium transition-colors focus-visible:ring-[3px] focus-visible:outline-none"
